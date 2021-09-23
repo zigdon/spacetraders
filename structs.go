@@ -15,6 +15,11 @@ type StatusRes struct {
 	Status string `json:"status"`
 }
 
+type ClaimRes struct {
+	Token string `json:"token"`
+	User  User   `json:"user"`
+}
+
 type AccountRes struct {
 	User User `json:"user"`
 }
