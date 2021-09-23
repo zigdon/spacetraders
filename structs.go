@@ -24,6 +24,31 @@ type AccountRes struct {
 	User User `json:"user"`
 }
 
+type LoanRes struct {
+	Loans []Loan `json:"loans"`
+}
+
+type Loan struct {
+	Due                time.Time `json:"due"`
+	ID                 string    `json:"id"`
+	RepaymentAmount    int       `json:"repaymentAmount"`
+	Status             string    `json:"status"`
+	Amount             int       `json:"amount"`
+	CollateralRequired bool      `json:"collateralRequired"`
+	Rate               int       `json:"rate"`
+	TermInDays         int       `json:"termInDays"`
+	Type               string    `json:"type"`
+}
+
+type TakeLoanRes struct {
+	Credits int  `json:"credits"`
+	Loan    Loan `json:"loan"`
+}
+
+type MyLoansRes struct {
+	Loans []Loan `json:"loans"`
+}
+
 type User struct {
 	Credits        int       `json:"credits"`
 	JoinedAt       time.Time `json:"joinedAt"`

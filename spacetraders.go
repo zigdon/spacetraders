@@ -80,7 +80,7 @@ func (c *Client) Post(base string, args map[string]string) (string, error) {
 		uri = base
 	}
 	if c.token != "" {
-		args["token"] = c.token
+		uri += "?" + url.Values{"token": []string{c.token}}.Encode()
 	}
 	jsonBody, err := json.Marshal(args)
 	if err != nil {
@@ -180,4 +180,34 @@ func (c *Client) Account() (*User, error) {
 	}
 
 	return &ar.User, nil
+}
+
+func (c *Client) AvailableLoans() ([]Loan, error) {
+	lr := &LoanRes{}
+
+	if err := c.useAPI(get, "/types/loans", nil, lr); err != nil {
+		return nil, err
+	}
+
+	return lr.Loans, nil
+}
+
+func (c *Client) TakeLoan(name string) (*Loan, error) {
+	tlr := &TakeLoanRes{}
+
+	if err := c.useAPI(post, "/my/loans", map[string]string{"type": name}, tlr); err != nil {
+		return nil, err
+	}
+
+	return &tlr.Loan, nil
+}
+
+func (c *Client) MyLoans() ([]Loan, error) {
+	mlr := &MyLoansRes{}
+
+	if err := c.useAPI(get, "/my/loans", nil, mlr); err != nil {
+		return nil, err
+	}
+
+	return mlr.Loans, nil
 }

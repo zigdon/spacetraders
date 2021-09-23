@@ -117,6 +117,45 @@ func doLogout(c *spacetraders.Client, args []string) error {
 	return c.Logout()
 }
 
+func doLoans(c *spacetraders.Client, args []string) error {
+	loans, err := c.AvailableLoans()
+	if err != nil {
+		return fmt.Errorf("error getting loans: %v", err)
+	}
+
+	for _, l := range loans {
+		log.Printf("amt: %d, needs collateral: %v, rate: %d, term (days): %d, type: %s",
+			l.Amount, l.CollateralRequired, l.Rate, l.TermInDays, l.Type)
+	}
+
+	return nil
+}
+
+func doTakeLoan(c *spacetraders.Client, args []string) error {
+	loan, err := c.TakeLoan(args[0])
+	if err != nil {
+		return fmt.Errorf("error taking out loan: %v", err)
+	}
+
+	log.Printf("Loan taken, id=%s, due: %s", loan.ID, loan.Due)
+
+	return nil
+}
+
+func doMyLoans(c *spacetraders.Client, args []string) error {
+	loans, err := c.MyLoans()
+	if err != nil {
+		return fmt.Errorf("error querying loans: %v", err)
+	}
+
+	for _, l := range loans {
+		log.Printf("id: %s, due: %s, amt: %d, status: %s, type: %s",
+			l.ID, l.Due, l.RepaymentAmount, l.Status, l.Type)
+	}
+
+	return nil
+}
+
 func main() {
 	c := spacetraders.New()
 
@@ -149,6 +188,21 @@ func main() {
 			usage: "claim username path/to/file",
 			help:  "Claims a username, saves token to specified file",
 			do:    doClaim,
+		},
+		"availableLoans": {
+			usage: "availableLoans",
+			help:  "Display currently available loans",
+			do:    doLoans,
+		},
+		"takeLoan": {
+			usage: "takeLoan type",
+			help:  "Take out one of the available loans",
+			do:    doTakeLoan,
+		},
+		"myLoans": {
+			usage: "myLoans",
+			help:  "List outstanding loans",
+			do:    doMyLoans,
 		},
 	}
 
