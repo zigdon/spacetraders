@@ -260,3 +260,20 @@ func (c *Client) MyShips() ([]Ship, error) {
 
 	return msr.Ships, nil
 }
+
+// Cargo
+func (c *Client) BuyCargo(shipID, good string, qty int) (*Order, error) {
+	br := &BuyRes{}
+
+	args := map[string]string{
+		"shipId":   shipID,
+		"good":     good,
+		"quantity": fmt.Sprintf("%d", qty),
+	}
+
+	if err := c.useAPI(post, "/my/purchase-orders", args, br); err != nil {
+		return nil, err
+	}
+
+	return &br.Order, nil
+}

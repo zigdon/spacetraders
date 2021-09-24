@@ -12,6 +12,7 @@ type Client struct {
 	server   string
 }
 
+// JSON responses
 type StatusRes struct {
 	Status string `json:"status"`
 }
@@ -29,6 +30,40 @@ type LoanRes struct {
 	Loans []Loan `json:"loans"`
 }
 
+type TakeLoanRes struct {
+	Credits int  `json:"credits"`
+	Loan    Loan `json:"loan"`
+}
+
+type MyLoansRes struct {
+	Loans []Loan `json:"loans"`
+}
+
+type BuyShipRes struct {
+	User User `json:"user"`
+	Ship Ship `json:"ship"`
+}
+
+type MyShipsRes struct {
+	Ships []Ship `json:"ships"`
+}
+
+type ShipListingRes struct {
+	Ships []ShipListing `json:"shipListings"`
+}
+
+type SystemsRes struct {
+	Systems []System `json:"systems"`
+}
+
+type BuyRes struct {
+	User  User  `json:"user"`
+	Order Order `json:"order"`
+	Ship  Ship  `json:"ship"`
+}
+
+// Core types
+
 type Loan struct {
 	Due                time.Time `json:"due"`
 	ID                 string    `json:"id"`
@@ -39,15 +74,6 @@ type Loan struct {
 	Rate               int       `json:"rate"`
 	TermInDays         int       `json:"termInDays"`
 	Type               string    `json:"type"`
-}
-
-type TakeLoanRes struct {
-	Credits int  `json:"credits"`
-	Loan    Loan `json:"loan"`
-}
-
-type MyLoansRes struct {
-	Loans []Loan `json:"loans"`
 }
 
 type User struct {
@@ -61,17 +87,6 @@ type User struct {
 func (u *User) String() string {
 	return fmt.Sprintf("%s: Credits: %d, Ships: %d, Structures: %d, Joined: %s",
 		u.Username, u.Credits, u.ShipCount, u.StructureCount, u.JoinedAt)
-}
-
-type BuyShipRes struct {
-	User struct {
-		Credits int `json:"credits"`
-	} `json:"user"`
-	Ship Ship `json:"ship"`
-}
-
-type MyShipsRes struct {
-	Ships []Ship `json:"ships"`
 }
 
 type Ship struct {
@@ -147,10 +162,6 @@ func (c Cargo) String() string {
 	return fmt.Sprintf("%d of %s (%d)", c.Quantity, c.Good, c.TotalVolume)
 }
 
-type ShipListingRes struct {
-	Ships []ShipListing `json:"shipListings"`
-}
-
 type ShipListing struct {
 	Class             string `json:"class"`
 	Manufacturer      string `json:"manufacturer"`
@@ -186,10 +197,6 @@ func (s ShipListing) Filter(word string) bool {
 		}
 	}
 	return false
-}
-
-type SystemsRes struct {
-	Systems []System `json:"systems"`
 }
 
 type System struct {
@@ -258,4 +265,11 @@ func (st Structure) Details(indent int) []string {
 	i := func(s string) { res = append(res, fmt.Sprintf("%s%s", prefix, s)) }
 	i(fmt.Sprintf("%s: %s", st.ID, st.Type))
 	return res
+}
+
+type Order struct {
+	Good         string `json:"good"`
+	PricePerUnit int    `json:"pricePerUnit"`
+	Quantity     int    `json:"quantity"`
+	Total        int    `json:"total"`
 }

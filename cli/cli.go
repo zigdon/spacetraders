@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/chzyer/readline"
@@ -256,6 +257,54 @@ func doMyShips(c *spacetraders.Client, args []string) error {
 	return nil
 }
 
+func doBuy(c *spacetraders.Client, args []string) error {
+	id, err := getShipID(c, args[0])
+	if err != nil {
+		return err
+	}
+
+	qty, err := strconv.Atoi(args[2])
+	if err != nil {
+		return err
+	}
+
+	order, err := c.BuyCargo(id, args[1], qty)
+	if err != nil {
+		return fmt.Errorf("error buy goods: %v", err)
+	}
+
+	log.Printf("Bought %d of %s for %d", order.Quantity, order.Good, order.Total)
+
+	return nil
+}
+
+func getShipID(c *spacetraders.Client, id string) (string, error) {
+	ships, err := c.MyShips()
+	if err != nil {
+		return "", fmt.Errorf("can't get all my ships: %v", err)
+	}
+
+	matches := []spacetraders.Ship{}
+	for _, s := range ships {
+		if strings.HasPrefix(s.ID, id) {
+			matches = append(matches, s)
+		}
+	}
+
+	switch len(matches) {
+	case 0:
+		return "", fmt.Errorf("no matches found for %q in %d ships", id, len(ships))
+	case 1:
+		return matches[0].ID, nil
+	default:
+		descs := []string{}
+		for _, s := range matches {
+			descs = append(descs, s.Short())
+		}
+		return "", fmt.Errorf("%d ships matches %q:\n%s", len(matches), id, strings.Join(descs, "\n"))
+	}
+}
+
 func main() {
 	c := spacetraders.New()
 
@@ -266,7 +315,7 @@ func main() {
 	commands = map[string]cmd{
 		"help": {
 			name:    "Help",
-			usage:   "help [command]",
+			usage:   "Help [command]",
 			help:    "List all commands, or get information on a specific command",
 			do:      doHelp,
 			maxArgs: 1,
@@ -274,13 +323,13 @@ func main() {
 
 		"account": {
 			name:  "Account",
-			usage: "account",
+			usage: "Account",
 			help:  "Get details about the logged in account",
 			do:    doAccount,
 		},
 		"login": {
 			name:    "Login",
-			usage:   "login [path/to/file]",
+			usage:   "Login [path/to/file]",
 			help:    "Load username and token from saved file, $HOME/.config/spacetraders.io by default",
 			do:      doLogin,
 			minArgs: 0,
@@ -288,13 +337,13 @@ func main() {
 		},
 		"logout": {
 			name:  "Logout",
-			usage: "logout",
+			usage: "Logout",
 			help:  "Expire the current logged in token.",
 			do:    doLogout,
 		},
 		"claim": {
 			name:    "Claim",
-			usage:   "claim username path/to/file",
+			usage:   "Claim username path/to/file",
 			help:    "Claims a username, saves token to specified file",
 			do:      doClaim,
 			minArgs: 2,
@@ -303,13 +352,13 @@ func main() {
 
 		"availableloans": {
 			name:  "AvailableLoans",
-			usage: "availableLoans",
+			usage: "AvailableLoans",
 			help:  "Display currently available loans",
 			do:    doLoans,
 		},
 		"takeloan": {
 			name:    "TakeLoan",
-			usage:   "takeLoan type",
+			usage:   "TakeLoan type",
 			help:    "Take out one of the available loans",
 			do:      doTakeLoan,
 			minArgs: 1,
@@ -317,14 +366,14 @@ func main() {
 		},
 		"myloans": {
 			name:  "MyLoans",
-			usage: "myLoans",
+			usage: "MyLoans",
 			help:  "List outstanding loans",
 			do:    doMyLoans,
 		},
 
 		"system": {
 			name:    "System",
-			usage:   "system [symbol]",
+			usage:   "System [symbol]",
 			help:    "Get details about a system, or all systems if not specified",
 			do:      doListSystems,
 			maxArgs: 1,
@@ -332,7 +381,7 @@ func main() {
 
 		"listships": {
 			name:  "ListShips",
-			usage: "listShips location [filter]",
+			usage: "ListShips location [filter]",
 			help: "Show available ships at location. If filter is provided, " +
 				"only show ships that match in type, manufacturer, or class",
 			do:      doListShips,
@@ -341,7 +390,7 @@ func main() {
 		},
 		"buyship": {
 			name:    "BuyShip",
-			usage:   "buyShip location type",
+			usage:   "BuyShip location type",
 			help:    "Buy the given ship in the specified location",
 			do:      doBuyShip,
 			minArgs: 2,
@@ -349,11 +398,20 @@ func main() {
 		},
 		"myships": {
 			name:    "MyShips",
-			usage:   "myShips [filter]",
+			usage:   "MyShips [filter]",
 			help:    "List owned ships, with an optional filter",
 			do:      doMyShips,
 			minArgs: 0,
 			maxArgs: 1,
+		},
+
+		"buy": {
+			name:    "Buy",
+			usage:   "Buy shipID good quantity",
+			help:    "Buy the specified quantiy of good for the ship identified. Partial ship IDs accepted if unique",
+			do:      doBuy,
+			minArgs: 3,
+			maxArgs: 3,
 		},
 	}
 
