@@ -62,6 +62,10 @@ type BuyRes struct {
 	Ship  Ship  `json:"ship"`
 }
 
+type MarketplaceRes struct {
+	Offers []Offer `json:"marketplace"`
+}
+
 // Core types
 
 type Loan struct {
@@ -272,4 +276,19 @@ type Order struct {
 	PricePerUnit int    `json:"pricePerUnit"`
 	Quantity     int    `json:"quantity"`
 	Total        int    `json:"total"`
+}
+
+type Offer struct {
+	Symbol               string `json:"symbol"`
+	VolumePerUnit        int    `json:"volumePerUnit"`
+	PricePerUnit         int    `json:"pricePerUnit"`
+	Spread               int    `json:"spread"`
+	PurchasePricePerUnit int    `json:"purchasePricePerUnit"`
+	SellPricePerUnit     int    `json:"sellPricePerUnit"`
+	QuantityAvailable    int    `json:"quantityAvailable"`
+}
+
+func (o Offer) String() string {
+	return fmt.Sprintf("%6d x %-30s Buy: %-6d  Sell: %-6d  Spread: %-4d  Volume per unit: %d",
+		o.QuantityAvailable, o.Symbol, o.PurchasePricePerUnit, o.SellPricePerUnit, o.Spread, o.VolumePerUnit)
 }

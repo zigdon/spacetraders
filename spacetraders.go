@@ -261,7 +261,7 @@ func (c *Client) MyShips() ([]Ship, error) {
 	return msr.Ships, nil
 }
 
-// Cargo
+// Goods and Cargo
 func (c *Client) BuyCargo(shipID, good string, qty int) (*Order, error) {
 	br := &BuyRes{}
 
@@ -276,4 +276,14 @@ func (c *Client) BuyCargo(shipID, good string, qty int) (*Order, error) {
 	}
 
 	return &br.Order, nil
+}
+
+func (c *Client) Marketplace(loc string) ([]Offer, error) {
+	mr := &MarketplaceRes{}
+
+	if err := c.useAPI(get, fmt.Sprintf("/locations/%s/marketplace", loc), nil, mr); err != nil {
+		return nil, err
+	}
+
+	return mr.Offers, nil
 }

@@ -288,6 +288,20 @@ func doBuy(c *spacetraders.Client, args []string) error {
 	return nil
 }
 
+func doMarket(c *spacetraders.Client, args []string) error {
+	offers, err := c.Marketplace(args[0])
+	if err != nil {
+		return fmt.Errorf("error querying marketplace at %q: %v", args[0], err)
+	}
+
+	fmt.Printf("%d offers at %q:\n", len(offers), args[0])
+	for _, offer := range offers {
+		fmt.Println(offer.String())
+	}
+
+	return nil
+}
+
 func getShipID(c *spacetraders.Client, id string) (string, error) {
 	ships, err := c.MyShips()
 	if err != nil {
@@ -434,6 +448,15 @@ func main() {
 			do:      doBuy,
 			minArgs: 3,
 			maxArgs: 3,
+		},
+		"market": {
+			section: "Goods and Cargo",
+			name:    "Market",
+			usage:   "Market <location>",
+			help:    "List all goods offered at location.",
+			do:      doMarket,
+			minArgs: 1,
+			maxArgs: 1,
 		},
 	}
 
