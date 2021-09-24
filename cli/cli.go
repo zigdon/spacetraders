@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -11,6 +10,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/chzyer/readline"
 	"github.com/zigdon/spacetraders"
 )
 
@@ -25,10 +25,12 @@ type cmd struct {
 var commands = map[string]cmd{}
 
 func doLoop(c *spacetraders.Client) {
-	r := bufio.NewReader(os.Stdin)
+	r, err := readline.New("> ")
+	if err != nil {
+		log.Fatalf("Can't readline: %v", err)
+	}
 	for {
-		fmt.Printf("> ")
-		line, err := r.ReadString(byte('\n'))
+		line, err := r.Readline()
 		if err != nil {
 			if err == io.EOF {
 				return
