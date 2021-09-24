@@ -15,6 +15,7 @@ import (
 )
 
 type cmd struct {
+	name    string
 	usage   string
 	help    string
 	do      func(*spacetraders.Client, []string) error
@@ -40,7 +41,7 @@ func doLoop(c *spacetraders.Client) {
 		}
 
 		words := strings.Split(strings.TrimSpace(line), " ")
-		switch cmd := words[0]; cmd {
+		switch cmd := strings.ToLower(words[0]); cmd {
 		case "exit":
 			return
 		default:
@@ -70,8 +71,8 @@ func doHelp(c *spacetraders.Client, args []string) error {
 		}
 	}
 	cmds := []string{}
-	for cmd := range commands {
-		cmds = append(cmds, cmd)
+	for _, cmd := range commands {
+		cmds = append(cmds, cmd.name)
 	}
 	sort.Strings(cmds)
 	fmt.Printf("Available commands: %s",
@@ -264,6 +265,7 @@ func main() {
 
 	commands = map[string]cmd{
 		"help": {
+			name:    "Help",
 			usage:   "help [command]",
 			help:    "List all commands, or get information on a specific command",
 			do:      doHelp,
@@ -271,11 +273,13 @@ func main() {
 		},
 
 		"account": {
+			name:  "Account",
 			usage: "account",
 			help:  "Get details about the logged in account",
 			do:    doAccount,
 		},
 		"login": {
+			name:    "Login",
 			usage:   "login [path/to/file]",
 			help:    "Load username and token from saved file, $HOME/.config/spacetraders.io by default",
 			do:      doLogin,
@@ -283,11 +287,13 @@ func main() {
 			maxArgs: 1,
 		},
 		"logout": {
+			name:  "Logout",
 			usage: "logout",
 			help:  "Expire the current logged in token.",
 			do:    doLogout,
 		},
 		"claim": {
+			name:    "Claim",
 			usage:   "claim username path/to/file",
 			help:    "Claims a username, saves token to specified file",
 			do:      doClaim,
@@ -295,32 +301,37 @@ func main() {
 			maxArgs: 2,
 		},
 
-		"availableLoans": {
+		"availableloans": {
+			name:  "AvailableLoans",
 			usage: "availableLoans",
 			help:  "Display currently available loans",
 			do:    doLoans,
 		},
-		"takeLoan": {
+		"takeloan": {
+			name:    "TakeLoan",
 			usage:   "takeLoan type",
 			help:    "Take out one of the available loans",
 			do:      doTakeLoan,
 			minArgs: 1,
 			maxArgs: 1,
 		},
-		"myLoans": {
+		"myloans": {
+			name:  "MyLoans",
 			usage: "myLoans",
 			help:  "List outstanding loans",
 			do:    doMyLoans,
 		},
 
 		"system": {
+			name:    "System",
 			usage:   "system [symbol]",
 			help:    "Get details about a system, or all systems if not specified",
 			do:      doListSystems,
 			maxArgs: 1,
 		},
 
-		"listShips": {
+		"listships": {
+			name:  "ListShips",
 			usage: "listShips location [filter]",
 			help: "Show available ships at location. If filter is provided, " +
 				"only show ships that match in type, manufacturer, or class",
@@ -328,14 +339,16 @@ func main() {
 			minArgs: 1,
 			maxArgs: 2,
 		},
-		"buyShip": {
+		"buyship": {
+			name:    "BuyShip",
 			usage:   "buyShip location type",
 			help:    "Buy the given ship in the specified location",
 			do:      doBuyShip,
 			minArgs: 2,
 			maxArgs: 2,
 		},
-		"myShips": {
+		"myships": {
+			name:    "MyShips",
 			usage:   "myShips [filter]",
 			help:    "List owned ships, with an optional filter",
 			do:      doMyShips,
