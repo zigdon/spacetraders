@@ -28,6 +28,7 @@ const (
 	get  httpMethod = "GET"
 )
 
+// Utils
 func New() *Client {
 	return &Client{
 		server: "https://api.spacetraders.io",
@@ -144,6 +145,7 @@ func (c *Client) Status() error {
 	return nil
 }
 
+// Account
 func (c *Client) Claim(username string) (string, *User, error) {
 	if c.username != "" {
 		return "", nil, fmt.Errorf("Can't claim while already logged in as %q", c.username)
@@ -182,6 +184,7 @@ func (c *Client) Account() (*User, error) {
 	return &ar.User, nil
 }
 
+// Loans
 func (c *Client) AvailableLoans() ([]Loan, error) {
 	lr := &LoanRes{}
 
@@ -210,4 +213,27 @@ func (c *Client) MyLoans() ([]Loan, error) {
 	}
 
 	return mlr.Loans, nil
+}
+
+// Systems
+func (c *Client) ListSystems() ([]System, error) {
+	sr := &SystemsRes{}
+
+	if err := c.useAPI(get, "/game/systems", nil, sr); err != nil {
+		return nil, err
+	}
+
+	return sr.Systems, nil
+}
+
+// Ships
+func (c *Client) ListShips(system string) ([]Ship, error) {
+	shlr := &ShipListingRes{}
+
+	if err := c.useAPI(get, fmt.Sprintf("/systems/%s/ship-listing", system), nil, shlr); err != nil {
+		return nil, err
+	}
+
+	return shlr.Ships, nil
+
 }

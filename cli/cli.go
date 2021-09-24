@@ -156,6 +156,31 @@ func doMyLoans(c *spacetraders.Client, args []string) error {
 	return nil
 }
 
+func doListSystems(c *spacetraders.Client, args []string) error {
+	systems, err := c.ListSystems()
+	if err != nil {
+		return fmt.Errorf("error listing systems: %v", err)
+	}
+
+	sys := []string{}
+	cache := make(map[string]spacetraders.System)
+	for _, s := range systems {
+		sys = append(sys, s.Symbol)
+		cache[s.Symbol] = s
+	}
+	sort.Strings(sys)
+	if len(args) == 0 {
+		log.Println("All systems:")
+		for _, sym := range sys {
+			log.Println(cache[sym])
+		}
+		return nil
+	}
+
+	log.Println(cache[args[0]].Details())
+	return nil
+}
+
 func main() {
 	c := spacetraders.New()
 
@@ -169,6 +194,7 @@ func main() {
 			help:  "List all commands, or get information on a specific command",
 			do:    doHelp,
 		},
+
 		"account": {
 			usage: "account",
 			help:  "Get details about the logged in account",
@@ -189,6 +215,7 @@ func main() {
 			help:  "Claims a username, saves token to specified file",
 			do:    doClaim,
 		},
+
 		"availableLoans": {
 			usage: "availableLoans",
 			help:  "Display currently available loans",
@@ -204,6 +231,14 @@ func main() {
 			help:  "List outstanding loans",
 			do:    doMyLoans,
 		},
+
+		"system": {
+			usage: "system [symbol]",
+			help:  "Get details about a system, or all systems if not specified",
+			do:    doListSystems,
+		},
+
+		"listShips": {},
 	}
 
 	doLoop(c)
