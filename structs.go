@@ -63,11 +63,95 @@ func (u *User) String() string {
 		u.Username, u.Credits, u.ShipCount, u.StructureCount, u.JoinedAt)
 }
 
-type ShipListingRes struct {
-	Ships []Ship `json:"shipListings"`
+type BuyShipRes struct {
+	User struct {
+		Credits int `json:"credits"`
+	} `json:"user"`
+	Ship Ship `json:"ship"`
+}
+
+type MyShipsRes struct {
+	Ships []Ship `json:"ships"`
 }
 
 type Ship struct {
+	Cargo          []Cargo `json:"cargo"`
+	Class          string  `json:"class"`
+	FlightPlanID   string  `json:"flightPlanId,omitempty"`
+	ID             string  `json:"id"`
+	Location       string  `json:"location"`
+	Manufacturer   string  `json:"manufacturer"`
+	MaxCargo       int     `json:"maxCargo"`
+	Plating        int     `json:"plating"`
+	SpaceAvailable int     `json:"spaceAvailable"`
+	Speed          int     `json:"speed"`
+	Type           string  `json:"type"`
+	Weapons        int     `json:"weapons"`
+	X              int     `json:"x"`
+	Y              int     `json:"y"`
+}
+
+func (s *Ship) Filter(word string) bool {
+	for _, bit := range []string{s.Class, s.Location, s.Type} {
+		if bit == word {
+			return true
+		}
+	}
+
+	for _, id := range []string{s.ID, s.FlightPlanID} {
+		if strings.HasPrefix(id, word) {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (s *Ship) String() string {
+	res := []string{}
+	i := func(format string, args ...interface{}) { res = append(res, fmt.Sprintf(format, args...)) }
+	i("%s: %s %s (%s)", s.ID, s.Manufacturer, s.Class, s.Type)
+	i("Speed: %d, Max cargo: %d, Available space: %d, Weapons: %d, Plating: %d",
+		s.Speed, s.MaxCargo, s.SpaceAvailable, s.Weapons, s.Plating)
+	if s.FlightPlanID == "" {
+		i("At %s (%d, %d)", s.Location, s.X, s.Y)
+	} else {
+		i("In flight: %s", s.FlightPlanID)
+	}
+	if len(s.Cargo) > 0 {
+		i("Cargo:")
+		for _, c := range s.Cargo {
+			i("  %s", c)
+		}
+	}
+
+	return strings.Join(res, "\n")
+}
+
+func (s *Ship) Short() string {
+	if s.FlightPlanID == "" {
+		return fmt.Sprintf("%s: %s %s (%s): Loc: %s (%d, %d), Space: %d",
+			s.ID, s.Manufacturer, s.Class, s.Type, s.Location, s.X, s.Y, s.SpaceAvailable)
+	}
+	return fmt.Sprintf("%s: %s %s (%s): Flight plan: %s, Space: %d",
+		s.ID, s.Manufacturer, s.Class, s.Type, s.FlightPlanID, s.SpaceAvailable)
+}
+
+type Cargo struct {
+	Good        string `json:"good"`
+	Quantity    int    `json:"quantity"`
+	TotalVolume int    `json:"totalVolume"`
+}
+
+func (c Cargo) String() string {
+	return fmt.Sprintf("%d of %s (%d)", c.Quantity, c.Good, c.TotalVolume)
+}
+
+type ShipListingRes struct {
+	Ships []ShipListing `json:"shipListings"`
+}
+
+type ShipListing struct {
 	Class             string `json:"class"`
 	Manufacturer      string `json:"manufacturer"`
 	MaxCargo          int    `json:"maxCargo"`
@@ -81,7 +165,7 @@ type Ship struct {
 	Weapons int    `json:"weapons"`
 }
 
-func (s Ship) String() string {
+func (s ShipListing) String() string {
 	res := []string{}
 	i := func(st string) {
 		res = append(res, st)
@@ -95,7 +179,7 @@ func (s Ship) String() string {
 	return strings.Join(res, "\n")
 }
 
-func (s Ship) Filter(word string) bool {
+func (s ShipListing) Filter(word string) bool {
 	for _, bit := range []string{s.Type, s.Manufacturer, s.Class} {
 		if bit == word {
 			return true

@@ -227,13 +227,36 @@ func (c *Client) ListSystems() ([]System, error) {
 }
 
 // Ships
-func (c *Client) ListShips(system string) ([]Ship, error) {
-	shlr := &ShipListingRes{}
+func (c *Client) ListShips(system string) ([]ShipListing, error) {
+	slr := &ShipListingRes{}
 
-	if err := c.useAPI(get, fmt.Sprintf("/systems/%s/ship-listings", system), nil, shlr); err != nil {
+	if err := c.useAPI(get, fmt.Sprintf("/systems/%s/ship-listings", system), nil, slr); err != nil {
 		return nil, err
 	}
 
-	return shlr.Ships, nil
+	return slr.Ships, nil
+}
 
+func (c *Client) BuyShip(location, kind string) (*Ship, error) {
+	bsr := &BuyShipRes{}
+	args := map[string]string{
+		"location": location,
+		"type":     kind,
+	}
+
+	if err := c.useAPI(post, "/my/ships", args, bsr); err != nil {
+		return nil, err
+	}
+
+	return &bsr.Ship, nil
+}
+
+func (c *Client) MyShips() ([]Ship, error) {
+	msr := &MyShipsRes{}
+
+	if err := c.useAPI(get, "/my/ships", nil, msr); err != nil {
+		return nil, err
+	}
+
+	return msr.Ships, nil
 }

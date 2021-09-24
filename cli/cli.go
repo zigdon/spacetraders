@@ -118,6 +118,7 @@ func doClaim(c *spacetraders.Client, args []string) error {
 		0600); err != nil {
 		return fmt.Errorf("Error writing new token %q to %q: %v", token, path, err)
 	}
+	log.Printf("Got token %q for %q", token, username)
 
 	return nil
 }
@@ -213,6 +214,47 @@ func doListShips(c *spacetraders.Client, args []string) error {
 	return nil
 }
 
+func doBuyShip(c *spacetraders.Client, args []string) error {
+	ship, err := c.BuyShip(args[0], args[1])
+	if err != nil {
+		return fmt.Errorf("error buying ship %q at %q: %v", args[1], args[0], err)
+	}
+
+	fmt.Printf("New ship ID: %s", ship.ID)
+
+	return nil
+}
+
+func doMyShips(c *spacetraders.Client, args []string) error {
+	ships, err := c.MyShips()
+	if err != nil {
+		return fmt.Errorf("error listing my ships: %v", err)
+	}
+
+	res := []spacetraders.Ship{}
+	for _, s := range ships {
+		if len(args) > 0 {
+			if !s.Filter(args[0]) {
+				continue
+			}
+		}
+		res = append(res, s)
+	}
+
+	switch len(res) {
+	case 0:
+		fmt.Println("No ships found.")
+	case 1:
+		fmt.Println(res[0].String())
+	default:
+		for _, s := range res {
+			fmt.Println(s.Short())
+		}
+	}
+
+	return nil
+}
+
 func main() {
 	c := spacetraders.New()
 
@@ -279,11 +321,26 @@ func main() {
 		},
 
 		"listShips": {
-			usage:   "listShips location [type]",
-			help:    "Show available ships at location, optionally of type",
+			usage: "listShips location [filter]",
+			help: "Show available ships at location. If filter is provided, " +
+				"only show ships that match in type, manufacturer, or class",
 			do:      doListShips,
 			minArgs: 1,
 			maxArgs: 2,
+		},
+		"buyShip": {
+			usage:   "buyShip location type",
+			help:    "Buy the given ship in the specified location",
+			do:      doBuyShip,
+			minArgs: 2,
+			maxArgs: 2,
+		},
+		"myShips": {
+			usage:   "myShips [filter]",
+			help:    "List owned ships, with an optional filter",
+			do:      doMyShips,
+			minArgs: 0,
+			maxArgs: 1,
 		},
 	}
 
