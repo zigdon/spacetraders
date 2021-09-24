@@ -81,6 +81,29 @@ type Ship struct {
 	Weapons int    `json:"weapons"`
 }
 
+func (s Ship) String() string {
+	res := []string{}
+	i := func(st string) {
+		res = append(res, st)
+	}
+	i(fmt.Sprintf("%s: %s %s", s.Type, s.Manufacturer, s.Class))
+	i(fmt.Sprintf("speed: %d, cargo: %d, weapons: %d, plating: %d", s.Speed, s.MaxCargo, s.Weapons, s.Plating))
+	for _, l := range s.PurchaseLocations {
+		i(fmt.Sprintf("  %s: %d", l.Location, l.Price))
+	}
+
+	return strings.Join(res, "\n")
+}
+
+func (s Ship) Filter(word string) bool {
+	for _, bit := range []string{s.Type, s.Manufacturer, s.Class} {
+		if bit == word {
+			return true
+		}
+	}
+	return false
+}
+
 type SystemsRes struct {
 	Systems []System `json:"systems"`
 }

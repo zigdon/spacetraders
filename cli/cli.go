@@ -15,9 +15,11 @@ import (
 )
 
 type cmd struct {
-	usage string
-	help  string
-	do    func(*spacetraders.Client, []string) error
+	usage   string
+	help    string
+	do      func(*spacetraders.Client, []string) error
+	minArgs int
+	maxArgs int
 }
 
 var commands = map[string]cmd{}
@@ -41,6 +43,11 @@ func doLoop(c *spacetraders.Client) {
 			return
 		default:
 			if cmd, ok := commands[words[0]]; ok {
+				if len(words)-1 < cmd.minArgs || len(words)-1 > cmd.maxArgs {
+					log.Printf("Invalid arguments for %q", words[0])
+					words = []string{"help", words[0]}
+					cmd = commands["help"]
+				}
 				if err := cmd.do(c, words[1:]); err != nil {
 					log.Printf("Error: %v", err)
 				}
@@ -75,7 +82,7 @@ func doAccount(c *spacetraders.Client, args []string) error {
 	if err != nil {
 		return err
 	}
-	log.Printf("%s", u)
+	fmt.Printf("%s", u)
 	return nil
 }
 
@@ -124,7 +131,7 @@ func doLoans(c *spacetraders.Client, args []string) error {
 	}
 
 	for _, l := range loans {
-		log.Printf("amt: %d, needs collateral: %v, rate: %d, term (days): %d, type: %s",
+		fmt.Printf("amt: %d, needs collateral: %v, rate: %d, term (days): %d, type: %s",
 			l.Amount, l.CollateralRequired, l.Rate, l.TermInDays, l.Type)
 	}
 
@@ -137,7 +144,7 @@ func doTakeLoan(c *spacetraders.Client, args []string) error {
 		return fmt.Errorf("error taking out loan: %v", err)
 	}
 
-	log.Printf("Loan taken, id=%s, due: %s", loan.ID, loan.Due)
+	fmt.Printf("Loan taken, id=%s, due: %s", loan.ID, loan.Due)
 
 	return nil
 }
@@ -149,7 +156,7 @@ func doMyLoans(c *spacetraders.Client, args []string) error {
 	}
 
 	for _, l := range loans {
-		log.Printf("id: %s, due: %s, amt: %d, status: %s, type: %s",
+		fmt.Printf("id: %s, due: %s, amt: %d, status: %s, type: %s",
 			l.ID, l.Due, l.RepaymentAmount, l.Status, l.Type)
 	}
 
@@ -170,14 +177,37 @@ func doListSystems(c *spacetraders.Client, args []string) error {
 	}
 	sort.Strings(sys)
 	if len(args) == 0 {
-		log.Println("All systems:")
+		fmt.Println("All systems:")
 		for _, sym := range sys {
-			log.Println(cache[sym])
+			fmt.Println(cache[sym])
 		}
 		return nil
 	}
 
-	log.Println(cache[args[0]].Details())
+	fmt.Println(cache[args[0]].Details())
+	return nil
+}
+
+func doListShips(c *spacetraders.Client, args []string) error {
+	ships, err := c.ListShips(args[0])
+	if err != nil {
+		return fmt.Errorf("error listing ships in %q: %v", args[0], err)
+	}
+
+	if len(args) > 1 {
+		for _, s := range ships {
+			if !s.Filter(args[1]) {
+				continue
+			}
+			fmt.Println(s)
+		}
+		return nil
+	}
+
+	for _, s := range ships {
+		fmt.Println(s)
+	}
+
 	return nil
 }
 
@@ -190,9 +220,10 @@ func main() {
 
 	commands = map[string]cmd{
 		"help": {
-			usage: "help [command]",
-			help:  "List all commands, or get information on a specific command",
-			do:    doHelp,
+			usage:   "help [command]",
+			help:    "List all commands, or get information on a specific command",
+			do:      doHelp,
+			maxArgs: 1,
 		},
 
 		"account": {
@@ -201,9 +232,11 @@ func main() {
 			do:    doAccount,
 		},
 		"login": {
-			usage: "login path/to/file",
-			help:  "Load username and token from saved file, $HOME/.config/spacetraders.io by default",
-			do:    doLogin,
+			usage:   "login [path/to/file]",
+			help:    "Load username and token from saved file, $HOME/.config/spacetraders.io by default",
+			do:      doLogin,
+			minArgs: 0,
+			maxArgs: 1,
 		},
 		"logout": {
 			usage: "logout",
@@ -211,9 +244,11 @@ func main() {
 			do:    doLogout,
 		},
 		"claim": {
-			usage: "claim username path/to/file",
-			help:  "Claims a username, saves token to specified file",
-			do:    doClaim,
+			usage:   "claim username path/to/file",
+			help:    "Claims a username, saves token to specified file",
+			do:      doClaim,
+			minArgs: 2,
+			maxArgs: 2,
 		},
 
 		"availableLoans": {
@@ -222,9 +257,11 @@ func main() {
 			do:    doLoans,
 		},
 		"takeLoan": {
-			usage: "takeLoan type",
-			help:  "Take out one of the available loans",
-			do:    doTakeLoan,
+			usage:   "takeLoan type",
+			help:    "Take out one of the available loans",
+			do:      doTakeLoan,
+			minArgs: 1,
+			maxArgs: 1,
 		},
 		"myLoans": {
 			usage: "myLoans",
@@ -233,12 +270,19 @@ func main() {
 		},
 
 		"system": {
-			usage: "system [symbol]",
-			help:  "Get details about a system, or all systems if not specified",
-			do:    doListSystems,
+			usage:   "system [symbol]",
+			help:    "Get details about a system, or all systems if not specified",
+			do:      doListSystems,
+			maxArgs: 1,
 		},
 
-		"listShips": {},
+		"listShips": {
+			usage:   "listShips location [type]",
+			help:    "Show available ships at location, optionally of type",
+			do:      doListShips,
+			minArgs: 1,
+			maxArgs: 2,
+		},
 	}
 
 	doLoop(c)

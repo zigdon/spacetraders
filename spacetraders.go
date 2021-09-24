@@ -230,7 +230,7 @@ func (c *Client) ListSystems() ([]System, error) {
 func (c *Client) ListShips(system string) ([]Ship, error) {
 	shlr := &ShipListingRes{}
 
-	if err := c.useAPI(get, fmt.Sprintf("/systems/%s/ship-listing", system), nil, shlr); err != nil {
+	if err := c.useAPI(get, fmt.Sprintf("/systems/%s/ship-listings", system), nil, shlr); err != nil {
 		return nil, err
 	}
 
