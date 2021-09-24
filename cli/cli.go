@@ -17,6 +17,7 @@ import (
 
 type cmd struct {
 	name    string
+	section string
 	usage   string
 	help    string
 	do      func(*spacetraders.Client, []string) error
@@ -67,17 +68,26 @@ func doHelp(c *spacetraders.Client, args []string) error {
 	if len(args) > 0 {
 		cmd, ok := commands[args[0]]
 		if ok {
-			fmt.Printf("%s:\n%s", cmd.usage, cmd.help)
+			fmt.Printf("%s: %s\n%s\n", cmd.name, cmd.usage, cmd.help)
 			return nil
 		}
 	}
-	cmds := []string{}
+	cmds := make(map[string][]cmd)
 	for _, cmd := range commands {
-		cmds = append(cmds, cmd.name)
+		cmds[cmd.section] = append(cmds[cmd.section], cmd)
 	}
-	sort.Strings(cmds)
-	fmt.Printf("Available commands: %s",
-		strings.Join(cmds, ", "))
+	fmt.Println("Available commands:")
+	fmt.Println("<arguments> are required, [options] are optional.\n")
+	for _, s := range []string{"", "Account", "Loans", "Ships", "Locations", "Goods and Cargo"} {
+		if s != "" {
+			fmt.Printf("  %s:\n", s)
+		}
+		sort.SliceStable(cmds[s], func(i, j int) bool { return cmds[s][i].name < cmds[s][j].name })
+		for _, cm := range cmds[s] {
+			fmt.Printf("    %s: %s\n", cm.name, cm.usage)
+		}
+		fmt.Println()
+	}
 	return nil
 }
 
@@ -322,12 +332,14 @@ func main() {
 		},
 
 		"account": {
-			name:  "Account",
-			usage: "Account",
-			help:  "Get details about the logged in account",
-			do:    doAccount,
+			section: "Account",
+			name:    "Account",
+			usage:   "Account",
+			help:    "Get details about the logged in account",
+			do:      doAccount,
 		},
 		"login": {
+			section: "Account",
 			name:    "Login",
 			usage:   "Login [path/to/file]",
 			help:    "Load username and token from saved file, $HOME/.config/spacetraders.io by default",
@@ -336,14 +348,16 @@ func main() {
 			maxArgs: 1,
 		},
 		"logout": {
-			name:  "Logout",
-			usage: "Logout",
-			help:  "Expire the current logged in token.",
-			do:    doLogout,
+			section: "Account",
+			name:    "Logout",
+			usage:   "Logout",
+			help:    "Expire the current logged in token.",
+			do:      doLogout,
 		},
 		"claim": {
+			section: "Account",
 			name:    "Claim",
-			usage:   "Claim username path/to/file",
+			usage:   "Claim <username> <path/to/file>",
 			help:    "Claims a username, saves token to specified file",
 			do:      doClaim,
 			minArgs: 2,
@@ -351,27 +365,31 @@ func main() {
 		},
 
 		"availableloans": {
-			name:  "AvailableLoans",
-			usage: "AvailableLoans",
-			help:  "Display currently available loans",
-			do:    doLoans,
+			section: "Loans",
+			name:    "AvailableLoans",
+			usage:   "AvailableLoans",
+			help:    "Display currently available loans",
+			do:      doLoans,
 		},
 		"takeloan": {
+			section: "Loans",
 			name:    "TakeLoan",
-			usage:   "TakeLoan type",
+			usage:   "TakeLoan <type>",
 			help:    "Take out one of the available loans",
 			do:      doTakeLoan,
 			minArgs: 1,
 			maxArgs: 1,
 		},
 		"myloans": {
-			name:  "MyLoans",
-			usage: "MyLoans",
-			help:  "List outstanding loans",
-			do:    doMyLoans,
+			section: "Loans",
+			name:    "MyLoans",
+			usage:   "MyLoans",
+			help:    "List outstanding loans",
+			do:      doMyLoans,
 		},
 
 		"system": {
+			section: "Locations",
 			name:    "System",
 			usage:   "System [symbol]",
 			help:    "Get details about a system, or all systems if not specified",
@@ -380,8 +398,9 @@ func main() {
 		},
 
 		"listships": {
-			name:  "ListShips",
-			usage: "ListShips location [filter]",
+			section: "Ships",
+			name:    "ListShips",
+			usage:   "ListShips <location> [filter]",
 			help: "Show available ships at location. If filter is provided, " +
 				"only show ships that match in type, manufacturer, or class",
 			do:      doListShips,
@@ -389,14 +408,16 @@ func main() {
 			maxArgs: 2,
 		},
 		"buyship": {
+			section: "Ships",
 			name:    "BuyShip",
-			usage:   "BuyShip location type",
+			usage:   "BuyShip <location> <type>",
 			help:    "Buy the given ship in the specified location",
 			do:      doBuyShip,
 			minArgs: 2,
 			maxArgs: 2,
 		},
 		"myships": {
+			section: "Ships",
 			name:    "MyShips",
 			usage:   "MyShips [filter]",
 			help:    "List owned ships, with an optional filter",
@@ -406,8 +427,9 @@ func main() {
 		},
 
 		"buy": {
+			section: "Goods and Cargo",
 			name:    "Buy",
-			usage:   "Buy shipID good quantity",
+			usage:   "Buy <shipID> <good> <quantity>",
 			help:    "Buy the specified quantiy of good for the ship identified. Partial ship IDs accepted if unique",
 			do:      doBuy,
 			minArgs: 3,
