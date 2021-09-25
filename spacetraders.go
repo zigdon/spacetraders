@@ -8,7 +8,9 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"sort"
 	"strings"
+	"time"
 )
 
 func decodeJSON(data string, obj interface{}) error {
@@ -32,6 +34,7 @@ const (
 func New() *Client {
 	return &Client{
 		server: "https://api.spacetraders.io",
+		cache:  make(map[string]*cacheItem),
 	}
 }
 
@@ -145,6 +148,41 @@ func (c *Client) Status() error {
 	return nil
 }
 
+// Caching
+func (c *Client) Store(key string, validFor time.Duration, data []string) {
+	log.Printf("Cashing %d %q items for %s", len(data), key, validFor)
+	sort.Strings(data)
+	c.cache[key] = &cacheItem{expiresOn: time.Now().Add(validFor), data: data}
+}
+
+func (c *Client) Restore(key string) []string {
+	cached, ok := c.cache[key]
+	if !ok || cached.expiresOn.Before(time.Now()) {
+		log.Printf("Cache miss: %q", key)
+		if err := c.Cache(key); err != nil {
+			log.Printf("Error caching %q: %v", key, err)
+			return []string{}
+		}
+		cached = c.cache[key]
+	} else {
+		log.Printf("Cache hit: %q", key)
+	}
+	return cached.data
+}
+
+func (c *Client) Cache(key string) error {
+	switch key {
+	case "location", "system":
+		_, err := c.ListSystems()
+		return err
+	case "mylocation":
+		_, err := c.MyShips()
+		return err
+	default:
+		return fmt.Errorf("don't know how to cache %q", key)
+	}
+}
+
 // Account
 func (c *Client) Claim(username string) (string, *User, error) {
 	if c.username != "" {
@@ -192,6 +230,12 @@ func (c *Client) AvailableLoans() ([]Loan, error) {
 		return nil, err
 	}
 
+	loans := []string{}
+	for _, l := range lr.Loans {
+		loans = append(loans, l.ID)
+	}
+	c.Store("loans", time.Minute, loans)
+
 	return lr.Loans, nil
 }
 
@@ -222,6 +266,17 @@ func (c *Client) ListSystems() ([]System, error) {
 	if err := c.useAPI(get, "/game/systems", nil, sr); err != nil {
 		return nil, err
 	}
+
+	systems := []string{}
+	locations := []string{}
+	for _, s := range sr.Systems {
+		systems = append(systems, s.Symbol)
+		for _, l := range s.Locations {
+			locations = append(locations, l.Symbol)
+		}
+	}
+	c.Store("system", time.Hour, systems)
+	c.Store("location", time.Hour, locations)
 
 	return sr.Systems, nil
 }
@@ -257,6 +312,15 @@ func (c *Client) MyShips() ([]Ship, error) {
 	if err := c.useAPI(get, "/my/ships", nil, msr); err != nil {
 		return nil, err
 	}
+
+	ids := []string{}
+	locs := []string{}
+	for _, s := range msr.Ships {
+		ids = append(ids, s.ID)
+		locs = append(ids, s.Location)
+	}
+	c.Store("myships", time.Minute, ids)
+	c.Store("mylocation", time.Minute, locs)
 
 	return msr.Ships, nil
 }

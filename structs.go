@@ -10,6 +10,12 @@ type Client struct {
 	username string
 	token    string
 	server   string
+	cache    map[string]*cacheItem
+}
+
+type cacheItem struct {
+	expiresOn time.Time
+	data      []string
 }
 
 // JSON responses

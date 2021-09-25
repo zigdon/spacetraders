@@ -16,17 +16,19 @@ import (
 )
 
 type cmd struct {
-	name    string
-	section string
-	usage   string
-	help    string
-	do      func(*spacetraders.Client, []string) error
-	minArgs int
-	maxArgs int
+	name       string
+	section    string
+	usage      string
+	validators []string
+	help       string
+	do         func(*spacetraders.Client, []string) error
+	minArgs    int
+	maxArgs    int
 }
 
 var commands = map[string]cmd{}
 
+// Main input loop
 func doLoop(c *spacetraders.Client) {
 	r, err := readline.New("> ")
 	if err != nil {
@@ -41,6 +43,9 @@ func doLoop(c *spacetraders.Client) {
 			log.Printf("Error while reading input: %v", err)
 			break
 		}
+		if line == "" {
+			continue
+		}
 
 		words := strings.Split(strings.TrimSpace(line), " ")
 		switch cmd := strings.ToLower(words[0]); cmd {
@@ -53,6 +58,10 @@ func doLoop(c *spacetraders.Client) {
 					words = []string{"help", words[0]}
 					cmd = commands["help"]
 				}
+				if err := validate(c, words, cmd.validators); err != nil {
+					log.Printf("Invalid arguments: %v", err)
+					continue
+				}
 				if err := cmd.do(c, words[1:]); err != nil {
 					log.Printf("Error: %v", err)
 				}
@@ -64,6 +73,7 @@ func doLoop(c *spacetraders.Client) {
 	}
 }
 
+// Command implementations
 func doHelp(c *spacetraders.Client, args []string) error {
 	if len(args) > 0 {
 		cmd, ok := commands[args[0]]
@@ -302,6 +312,7 @@ func doMarket(c *spacetraders.Client, args []string) error {
 	return nil
 }
 
+// Helpers
 func getShipID(c *spacetraders.Client, id string) (string, error) {
 	ships, err := c.MyShips()
 	if err != nil {
@@ -327,6 +338,61 @@ func getShipID(c *spacetraders.Client, id string) (string, error) {
 		}
 		return "", fmt.Errorf("%d ships matches %q:\n%s", len(matches), id, strings.Join(descs, "\n"))
 	}
+}
+
+func filter(list []string, filter string) []string {
+	res := []string{}
+	lowered := strings.ToLower(filter)
+	for _, s := range list {
+		// If it's an exact match, don't bother with the rest
+		if strings.ToLower(s) == lowered {
+			return []string{s}
+		}
+		if strings.Contains(strings.ToLower(s), lowered) {
+			res = append(res, s)
+		}
+	}
+
+	return res
+}
+
+func valid(c *spacetraders.Client, kind, bit string) (string, error) {
+	validOpts := c.Restore(kind)
+	matching := filter(validOpts, bit)
+	switch len(matching) {
+	case 0:
+		return "", fmt.Errorf("No matching %ss: %v", kind, validOpts)
+	case 1:
+		if bit != matching[0] {
+			log.Printf("Using %q for %q", matching[0], bit)
+		}
+		return matching[0], nil
+	default:
+		return "", fmt.Errorf("Multiple matching %ss: %v", kind, matching)
+	}
+}
+
+func validate(c *spacetraders.Client, words []string, validators []string) error {
+	msgs := []string{}
+	for i, v := range validators {
+		switch v {
+		case "mylocation", "location", "system":
+		default:
+			continue
+		}
+		match, err := valid(c, v, words[i+1])
+		if err != nil {
+			msgs = append(msgs, fmt.Sprintf("Invalid %s %q: %v", v, words[i+1], err))
+			continue
+		}
+		words[i+1] = match
+	}
+
+	if len(msgs) > 0 {
+		return fmt.Errorf("validation errors:\n%s", strings.Join(msgs, "\n"))
+	}
+
+	return nil
 }
 
 func main() {
@@ -412,23 +478,25 @@ func main() {
 		},
 
 		"listships": {
-			section: "Ships",
-			name:    "ListShips",
-			usage:   "ListShips <location> [filter]",
-			help: "Show available ships at location. If filter is provided, " +
+			section:    "Ships",
+			name:       "ListShips",
+			usage:      "ListShips <system> [filter]",
+			validators: []string{"system"},
+			help: "Show available ships at all the locations in a system. If filter is provided, " +
 				"only show ships that match in type, manufacturer, or class",
 			do:      doListShips,
 			minArgs: 1,
 			maxArgs: 2,
 		},
 		"buyship": {
-			section: "Ships",
-			name:    "BuyShip",
-			usage:   "BuyShip <location> <type>",
-			help:    "Buy the given ship in the specified location",
-			do:      doBuyShip,
-			minArgs: 2,
-			maxArgs: 2,
+			section:    "Ships",
+			name:       "BuyShip",
+			usage:      "BuyShip <location> <type>",
+			validators: []string{"mylocation"},
+			help:       "Buy the given ship in the specified location",
+			do:         doBuyShip,
+			minArgs:    2,
+			maxArgs:    2,
 		},
 		"myships": {
 			section: "Ships",
@@ -450,13 +518,14 @@ func main() {
 			maxArgs: 3,
 		},
 		"market": {
-			section: "Goods and Cargo",
-			name:    "Market",
-			usage:   "Market <location>",
-			help:    "List all goods offered at location.",
-			do:      doMarket,
-			minArgs: 1,
-			maxArgs: 1,
+			section:    "Goods and Cargo",
+			name:       "Market",
+			usage:      "Market <location>",
+			validators: []string{"mylocation"},
+			help:       "List all goods offered at location.",
+			do:         doMarket,
+			minArgs:    1,
+			maxArgs:    1,
 		},
 	}
 
