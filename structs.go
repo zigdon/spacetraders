@@ -16,6 +16,7 @@ type Client struct {
 type cacheItem struct {
 	expiresOn time.Time
 	data      []string
+	shorts    []string
 }
 
 // JSON responses
@@ -81,13 +82,23 @@ type FlightPlanRes struct {
 type Loan struct {
 	Due                time.Time `json:"due"`
 	ID                 string    `json:"id"`
-	RepaymentAmount    int       `json:"repaymentAmount"`
-	Status             string    `json:"status"`
-	Amount             int       `json:"amount"`
-	CollateralRequired bool      `json:"collateralRequired"`
-	Rate               int       `json:"rate"`
-	TermInDays         int       `json:"termInDays"`
-	Type               string    `json:"type"`
+	ShortID            string
+	RepaymentAmount    int    `json:"repaymentAmount"`
+	Status             string `json:"status"`
+	Amount             int    `json:"amount"`
+	CollateralRequired bool   `json:"collateralRequired"`
+	Rate               int    `json:"rate"`
+	TermInDays         int    `json:"termInDays"`
+	Type               string `json:"type"`
+}
+
+func (l *Loan) String() string {
+	if l.Due.After(time.Now()) {
+		return fmt.Sprintf("id: %s, due in: %s, amt: %d, status: %s, type: %s",
+			l.ShortID, l.Due.Sub(time.Now()), l.RepaymentAmount, l.Status, l.Type)
+	}
+	return fmt.Sprintf("id: %s, was due: %s, amt: %d, status: %s, type: %s",
+		l.ShortID, l.Due.In(time.Local), l.RepaymentAmount, l.Status, l.Type)
 }
 
 type User struct {
@@ -100,29 +111,31 @@ type User struct {
 
 func (u *User) String() string {
 	return fmt.Sprintf("%s: Credits: %d, Ships: %d, Structures: %d, Joined: %s",
-		u.Username, u.Credits, u.ShipCount, u.StructureCount, u.JoinedAt)
+		u.Username, u.Credits, u.ShipCount, u.StructureCount, u.JoinedAt.In(time.Local))
 }
 
 type Ship struct {
-	Cargo          []Cargo `json:"cargo"`
-	Class          string  `json:"class"`
-	FlightPlanID   string  `json:"flightPlanId,omitempty"`
-	ID             string  `json:"id"`
-	Location       string  `json:"location"`
-	Manufacturer   string  `json:"manufacturer"`
-	MaxCargo       int     `json:"maxCargo"`
-	Plating        int     `json:"plating"`
-	SpaceAvailable int     `json:"spaceAvailable"`
-	Speed          int     `json:"speed"`
-	Type           string  `json:"type"`
-	Weapons        int     `json:"weapons"`
-	X              int     `json:"x"`
-	Y              int     `json:"y"`
+	Cargo             []Cargo `json:"cargo"`
+	Class             string  `json:"class"`
+	FlightPlanID      string  `json:"flightPlanId,omitempty"`
+	ShortFlightPlanID string
+	ID                string `json:"id"`
+	ShortID           string
+	Location          string `json:"location"`
+	Manufacturer      string `json:"manufacturer"`
+	MaxCargo          int    `json:"maxCargo"`
+	Plating           int    `json:"plating"`
+	SpaceAvailable    int    `json:"spaceAvailable"`
+	Speed             int    `json:"speed"`
+	Type              string `json:"type"`
+	Weapons           int    `json:"weapons"`
+	X                 int    `json:"x"`
+	Y                 int    `json:"y"`
 }
 
 func (s *Ship) Filter(word string) bool {
 	word = strings.ToLower(word)
-	for _, bit := range []string{s.Class, s.Location, s.Type} {
+	for _, bit := range []string{s.ShortID, s.ShortFlightPlanID, s.Class, s.Location, s.Type} {
 		if strings.ToLower(bit) == word {
 			return true
 		}
@@ -140,7 +153,8 @@ func (s *Ship) Filter(word string) bool {
 func (s *Ship) String() string {
 	res := []string{}
 	i := func(format string, args ...interface{}) { res = append(res, fmt.Sprintf(format, args...)) }
-	i("%s: %s %s (%s)", s.ID, s.Manufacturer, s.Class, s.Type)
+	i("%s: %s %s (%s)", s.ShortID, s.Manufacturer, s.Class, s.Type)
+	i("ID: %s", s.ID)
 	i("Speed: %d, Max cargo: %d, Available space: %d, Weapons: %d, Plating: %d",
 		s.Speed, s.MaxCargo, s.SpaceAvailable, s.Weapons, s.Plating)
 	if s.FlightPlanID == "" {
@@ -161,10 +175,10 @@ func (s *Ship) String() string {
 func (s *Ship) Short() string {
 	if s.FlightPlanID == "" {
 		return fmt.Sprintf("%s: %s %s (%s): Loc: %s (%d, %d), Space: %d",
-			s.ID, s.Manufacturer, s.Class, s.Type, s.Location, s.X, s.Y, s.SpaceAvailable)
+			s.ShortID, s.Manufacturer, s.Class, s.Type, s.Location, s.X, s.Y, s.SpaceAvailable)
 	}
 	return fmt.Sprintf("%s: %s %s (%s): Flight plan: %s, Space: %d",
-		s.ID, s.Manufacturer, s.Class, s.Type, s.FlightPlanID, s.SpaceAvailable)
+		s.ShortID, s.Manufacturer, s.Class, s.Type, s.FlightPlanID, s.SpaceAvailable)
 }
 
 type Cargo struct {
@@ -270,6 +284,7 @@ func (l Location) Details(indent int) []string {
 
 type Structure struct {
 	ID       string `json:"id"`
+	ShortID  string
 	Type     string `json:"type"`
 	Location string `json:"location"`
 }
@@ -312,7 +327,9 @@ type FlightPlan struct {
 	FuelConsumed           int       `json:"fuelConsumed"`
 	FuelRemaining          int       `json:"fuelRemaining"`
 	ID                     string    `json:"id"`
-	ShipID                 string    `json:"shipId"`
+	ShortID                string
+	ShipID                 string `json:"shipId"`
+	ShortShipID            string
 	TerminatedAt           time.Time `json:"terminatedAt"`
 	TimeRemainingInSeconds int       `json:"timeRemainingInSeconds"`
 }

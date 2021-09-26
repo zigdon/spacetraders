@@ -13,6 +13,7 @@ import (
 	"time"
 )
 
+// Utils
 func decodeJSON(data string, obj interface{}) error {
 	dec := json.NewDecoder(strings.NewReader(data))
 
@@ -23,20 +24,106 @@ func decodeJSON(data string, obj interface{}) error {
 	return nil
 }
 
-type httpMethod string
-
-const (
-	post httpMethod = "POST"
-	get  httpMethod = "GET"
+var (
+	shortToID  = make(map[string]string)
+	idToShort  = make(map[string]string)
+	shortIndex = make(map[string]int)
 )
 
-// Utils
 func New() *Client {
 	return &Client{
 		server: "https://api.spacetraders.io",
 		cache:  make(map[string]*cacheItem),
 	}
 }
+
+// Caching
+func makeShort(key string, data string) string {
+	short, ok := idToShort[data]
+	if ok {
+		return short
+	}
+	var prefix string
+	switch key {
+	case "loans":
+		prefix = "ln"
+	case "myships":
+		prefix = "s"
+	}
+
+	shortIndex[key]++
+	short = fmt.Sprintf("%s-%d", prefix, shortIndex[key])
+	idToShort[data] = short
+	log.Printf("Created short %q in %q for %q", short, key, data)
+	return short
+}
+
+func makeLong(id string) string {
+	if long, ok := shortToID[id]; ok {
+		return long
+	}
+	return id
+}
+
+func getShorts(key string, data []string) []string {
+	res := []string{}
+	for _, d := range data {
+		res = append(res, makeShort(key, d))
+	}
+
+	return res
+}
+
+func (c *Client) Add(key string, data string) {
+	short := makeShort(key, data)
+	c.cache[key].data = sort.StringSlice(append(c.cache[key].data, data))
+	c.cache[key].shorts = sort.StringSlice(append(c.cache[key].shorts, short))
+}
+
+func (c *Client) Store(key string, validFor time.Duration, data []string, shorts []string) {
+	log.Printf("Cashing %d %q items for %s", len(data), key, validFor)
+	sort.Strings(data)
+	c.cache[key] = &cacheItem{expiresOn: time.Now().Add(validFor), data: data, shorts: shorts}
+}
+
+func (c *Client) Restore(key string) []string {
+	cached, ok := c.cache[key]
+	if !ok || cached.expiresOn.Before(time.Now()) {
+		log.Printf("Cache miss: %q", key)
+		if err := c.Cache(key); err != nil {
+			log.Printf("Error caching %q: %v", key, err)
+			return []string{}
+		}
+		cached = c.cache[key]
+	} else {
+		log.Printf("Cache hit: %q", key)
+	}
+	if cached.shorts != nil {
+		return append(cached.shorts, cached.data...)
+	}
+	return cached.data
+}
+
+func (c *Client) Cache(key string) error {
+	switch key {
+	case "location", "system":
+		_, err := c.ListSystems()
+		return err
+	case "mylocation":
+		_, err := c.MyShips()
+		return err
+	default:
+		return fmt.Errorf("don't know how to cache %q", key)
+	}
+}
+
+// Low level REST functions
+type httpMethod string
+
+const (
+	post httpMethod = "POST"
+	get  httpMethod = "GET"
+)
 
 func (c *Client) useAPI(method httpMethod, url string, args map[string]string, obj interface{}) error {
 	var f func(string, map[string]string) (string, error)
@@ -149,41 +236,6 @@ func (c *Client) Status() error {
 	return nil
 }
 
-// Caching
-func (c *Client) Store(key string, validFor time.Duration, data []string) {
-	log.Printf("Cashing %d %q items for %s", len(data), key, validFor)
-	sort.Strings(data)
-	c.cache[key] = &cacheItem{expiresOn: time.Now().Add(validFor), data: data}
-}
-
-func (c *Client) Restore(key string) []string {
-	cached, ok := c.cache[key]
-	if !ok || cached.expiresOn.Before(time.Now()) {
-		log.Printf("Cache miss: %q", key)
-		if err := c.Cache(key); err != nil {
-			log.Printf("Error caching %q: %v", key, err)
-			return []string{}
-		}
-		cached = c.cache[key]
-	} else {
-		log.Printf("Cache hit: %q", key)
-	}
-	return cached.data
-}
-
-func (c *Client) Cache(key string) error {
-	switch key {
-	case "location", "system":
-		_, err := c.ListSystems()
-		return err
-	case "mylocation":
-		_, err := c.MyShips()
-		return err
-	default:
-		return fmt.Errorf("don't know how to cache %q", key)
-	}
-}
-
 // Account
 // ##ENDPOINT Claim username - `/users/USERNAME/claim`
 func (c *Client) Claim(username string) (string, *User, error) {
@@ -238,7 +290,6 @@ func (c *Client) AvailableLoans() ([]Loan, error) {
 	for _, l := range lr.Loans {
 		loans = append(loans, l.ID)
 	}
-	c.Store("loans", time.Minute, loans)
 
 	return lr.Loans, nil
 }
@@ -250,6 +301,8 @@ func (c *Client) TakeLoan(name string) (*Loan, error) {
 	if err := c.useAPI(post, "/my/loans", map[string]string{"type": name}, tlr); err != nil {
 		return nil, err
 	}
+	tlr.Loan.ShortID = makeShort("loans", tlr.Loan.ID)
+	c.Add("loans", tlr.Loan.ID)
 
 	return &tlr.Loan, nil
 }
@@ -261,6 +314,15 @@ func (c *Client) MyLoans() ([]Loan, error) {
 	if err := c.useAPI(get, "/my/loans", nil, mlr); err != nil {
 		return nil, err
 	}
+
+	ids := []string{}
+	shorts := []string{}
+	for i, l := range mlr.Loans {
+		ids = append(ids, l.ID)
+		mlr.Loans[i].ShortID = makeShort("loans", l.ID)
+		shorts = append(shorts, l.ID)
+	}
+	c.Store("loans", time.Minute, ids, shorts)
 
 	return mlr.Loans, nil
 }
@@ -282,8 +344,8 @@ func (c *Client) ListSystems() ([]System, error) {
 			locations = append(locations, l.Symbol)
 		}
 	}
-	c.Store("system", time.Hour, systems)
-	c.Store("location", time.Hour, locations)
+	c.Store("system", time.Hour, systems, nil)
+	c.Store("location", time.Hour, locations, nil)
 
 	return sr.Systems, nil
 }
@@ -324,13 +386,16 @@ func (c *Client) MyShips() ([]Ship, error) {
 	}
 
 	ids := []string{}
+	shorts := []string{}
 	locs := []string{}
-	for _, s := range msr.Ships {
+	for i, s := range msr.Ships {
 		ids = append(ids, s.ID)
+		msr.Ships[i].ShortID = makeShort("myships", s.ID)
+		shorts = append(shorts, s.ShortID)
 		locs = append(locs, s.Location)
 	}
-	c.Store("myships", time.Minute, ids)
-	c.Store("mylocation", time.Minute, locs)
+	c.Store("myships", time.Minute, ids, shorts)
+	c.Store("mylocation", time.Minute, locs, nil)
 
 	return msr.Ships, nil
 }

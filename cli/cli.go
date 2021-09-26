@@ -189,8 +189,7 @@ func doMyLoans(c *spacetraders.Client, args []string) error {
 	}
 
 	for _, l := range loans {
-		fmt.Printf("id: %s, due: %s, amt: %d, status: %s, type: %s",
-			l.ID, l.Due, l.RepaymentAmount, l.Status, l.Type)
+		fmt.Println(l.String())
 	}
 
 	return nil
