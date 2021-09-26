@@ -65,7 +65,7 @@ func doLoop(c *spacetraders.Client) {
 					words = []string{"help", words[0]}
 					cmd = commands["help"]
 				}
-				if err := validate(c, words, cmd.validators); err != nil {
+				if err := validate(c, words[1:], cmd.validators); err != nil {
 					log.Printf("Invalid arguments: %v", err)
 					continue
 				}
@@ -380,22 +380,25 @@ func valid(c *spacetraders.Client, kind, bit string) (string, error) {
 }
 
 func validate(c *spacetraders.Client, words []string, validators []string) error {
-	if !*useCache {
+	if !*useCache || len(words) == 0 {
 		return nil
 	}
 	msgs := []string{}
 	for i, v := range validators {
+		if len(words) < i-1 {
+			return nil
+		}
 		switch v {
 		case "mylocation", "location", "system":
 		default:
 			continue
 		}
-		match, err := valid(c, v, words[i+1])
+		match, err := valid(c, v, words[i])
 		if err != nil {
-			msgs = append(msgs, fmt.Sprintf("Invalid %s %q: %v", v, words[i+1], err))
+			msgs = append(msgs, fmt.Sprintf("Invalid %s %q: %v", v, words[i], err))
 			continue
 		}
-		words[i+1] = match
+		words[i] = match
 	}
 
 	if len(msgs) > 0 {
@@ -480,12 +483,13 @@ func main() {
 		},
 
 		"system": {
-			section: "Locations",
-			name:    "System",
-			usage:   "System [symbol]",
-			help:    "Get details about a system, or all systems if not specified",
-			do:      doListSystems,
-			maxArgs: 1,
+			section:    "Locations",
+			name:       "System",
+			usage:      "System [system]",
+			validators: []string{"system"},
+			help:       "Get details about a system, or all systems if not specified",
+			do:         doListSystems,
+			maxArgs:    1,
 		},
 
 		"listships": {
