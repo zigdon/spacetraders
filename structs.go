@@ -60,6 +60,12 @@ type BuyRes struct {
 	Ship  Ship  `json:"ship"`
 }
 
+type SellRes struct {
+	Credits int   `json:"credits"`
+	Order   Order `json:"order"`
+	Ship    Ship  `json:"ship"`
+}
+
 type MarketplaceRes struct {
 	Offers []Offer `json:"marketplace"`
 }
@@ -115,6 +121,7 @@ type Ship struct {
 	LocationName      string `json:"location"`
 	Manufacturer      string `json:"manufacturer"`
 	MaxCargo          int    `json:"maxCargo"`
+	LoadingSpeed      int    `json:"loadingSpeed"`
 	Plating           int    `json:"plating"`
 	SpaceAvailable    int    `json:"spaceAvailable"`
 	Speed             int    `json:"speed"`
@@ -349,12 +356,14 @@ type FlightPlan struct {
 
 func (f FlightPlan) Short() string {
 	return fmt.Sprintf("%s: %s %s->%s, ETA: %s",
-		f.ID, f.ShipID, f.Departure, f.Destination, f.ArrivesAt.Sub(time.Now()))
+		f.ShortID, f.ShortShipID, f.Departure, f.Destination,
+		f.ArrivesAt.Sub(time.Now()).Truncate(time.Second))
 }
 
 func (f FlightPlan) String() string {
 	return strings.Join([]string{
-		fmt.Sprintf("%s: %s %s->%s", f.ID, f.ShipID, f.Departure, f.Destination),
+		fmt.Sprintf("%s: %s %s->%s", f.ShortID, f.ShipID, f.Departure, f.Destination),
+		fmt.Sprintf("  ID: %s", f.ID),
 		fmt.Sprintf("  Arrives at: %s, ETA: %s", f.ArrivesAt, f.ArrivesAt.Sub(time.Now())),
 		fmt.Sprintf("  Fuel consumed: %d, remaining: %d", f.FuelConsumed, f.FuelRemaining),
 		fmt.Sprintf("  Distance: %d, Terminated: %s", f.Distance, f.TerminatedAt),

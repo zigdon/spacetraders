@@ -48,6 +48,21 @@ func New() *Client {
 	}
 }
 
+func (c *Client) Load(path string) error {
+	data, err := ioutil.ReadFile(path)
+	if err != nil {
+		return fmt.Errorf("Can't read token from %q: %v", path, err)
+	}
+
+	lines := strings.Split(string(data), "\n")
+	log.Printf("Token for %q loaded from %q.", lines[0], path)
+
+	c.username = strings.TrimSpace(lines[0])
+	c.token = strings.TrimSpace(lines[1])
+
+	return nil
+}
+
 // Caching
 type CacheKey string
 
@@ -57,6 +72,7 @@ const (
 	MYLOCATIONS CacheKey = "my locations"
 	LOCATIONS   CacheKey = "all locations"
 	SYSTEMS     CacheKey = "systems"
+	FLIGHTS     CacheKey = "flight"
 )
 
 type cacheItem struct {
@@ -82,6 +98,11 @@ func makeShort(key CacheKey, data string) string {
 		prefix = "ln"
 	case SHIPS:
 		prefix = "s"
+	case FLIGHTS:
+		prefix = "f"
+	default:
+		log.Printf("Unknown prefix for %s", key)
+		prefix = "X"
 	}
 
 	shortIndex[key]++
@@ -145,7 +166,7 @@ func (c *Client) Cache(key CacheKey) error {
 	case LOCATIONS, SYSTEMS:
 		_, err := c.ListSystems()
 		return err
-	case MYLOCATIONS:
+	case MYLOCATIONS, FLIGHTS:
 		_, err := c.MyShips()
 		return err
 	default:
@@ -183,19 +204,29 @@ func (c *Client) useAPI(method httpMethod, url string, args map[string]string, o
 	return nil
 }
 
-func (c *Client) Load(path string) error {
-	data, err := ioutil.ReadFile(path)
-	if err != nil {
-		return fmt.Errorf("Can't read token from %q: %v", path, err)
+func backoff(deadline int, f func() (*http.Response, error)) (*http.Response, error) {
+	wait := 1.0
+	start := time.Now()
+	for {
+		res, err := f()
+		if err != nil {
+			return nil, err
+		}
+
+		if res.StatusCode != 429 { // Too many requests
+			return res, nil
+		}
+
+		if start.Add(time.Duration(deadline)).After(time.Now()) {
+			return nil, fmt.Errorf("backoff deadline of %d seconds exceeded", deadline)
+		}
+
+		log.Printf("Too many requests, waiting %0.0f seconds, deadline %d", wait, deadline)
+		select {
+		case <-time.After(time.Duration(wait) * time.Second):
+		}
+		wait *= 1.5
 	}
-
-	lines := strings.Split(string(data), "\n")
-	log.Printf("Token for %q loaded from %q.", lines[0], path)
-
-	c.username = strings.TrimSpace(lines[0])
-	c.token = strings.TrimSpace(lines[1])
-
-	return nil
 }
 
 func (c *Client) Post(base string, args map[string]string) (string, error) {
@@ -217,7 +248,10 @@ func (c *Client) Post(base string, args map[string]string) (string, error) {
 	}
 	body := bytes.NewBuffer(jsonBody)
 
-	resp, err := http.Post(uri, "application/json", body)
+	resp, err := backoff(30, func() (*http.Response, error) {
+		return http.Post(uri, "application/json", body)
+	})
+
 	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
 		defer resp.Body.Close()
 		resBody, _ := ioutil.ReadAll(resp.Body)
@@ -250,7 +284,9 @@ func (c *Client) Get(base string, args map[string]string) (string, error) {
 	if len(values) > 0 {
 		uri += "?" + values.Encode()
 	}
-	resp, err := http.Get(uri)
+	resp, err := backoff(30, func() (*http.Response, error) {
+		return http.Get(uri)
+	})
 	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
 		defer resp.Body.Close()
 		body, _ := ioutil.ReadAll(resp.Body)
@@ -443,14 +479,17 @@ func (c *Client) MyShips() ([]Ship, error) {
 	ids := []string{}
 	shorts := []string{}
 	locs := []string{}
+	flights := []string{}
 	for i, s := range msr.Ships {
 		ids = append(ids, s.ID)
 		msr.Ships[i].ShortID = makeShort(SHIPS, s.ID)
 		shorts = append(shorts, s.ShortID)
 		locs = append(locs, s.LocationName)
+		locs = append(locs, s.FlightPlanID)
 	}
 	c.Store(SHIPS, time.Minute, ids, shorts)
 	c.Store(MYLOCATIONS, time.Minute, locs, nil)
+	c.Store(FLIGHTS, time.Hour, flights, nil)
 
 	return msr.Ships, nil
 }
@@ -467,6 +506,8 @@ func (c *Client) CreateFlight(shipID, destination string) (*FlightPlan, error) {
 	if err := c.useAPI(post, "/my/flight-plans", args, fpr); err != nil {
 		return nil, err
 	}
+	fpr.FlightPlan.ShortID = makeShort(FLIGHTS, fpr.FlightPlan.ID)
+	c.Add(FLIGHTS, fpr.FlightPlan.ID)
 
 	return &fpr.FlightPlan, nil
 }
@@ -479,6 +520,8 @@ func (c *Client) ShowFlight(flightID string) (*FlightPlan, error) {
 	if err := c.useAPI(get, fmt.Sprintf("/my/flight-plans/%s", flightID), nil, fpr); err != nil {
 		return nil, err
 	}
+	fpr.FlightPlan.ShortID = makeShort(FLIGHTS, fpr.FlightPlan.ID)
+	fpr.FlightPlan.ShortShipID = makeShort(SHIPS, fpr.FlightPlan.ShipID)
 
 	return &fpr.FlightPlan, nil
 }
@@ -500,6 +543,24 @@ func (c *Client) BuyCargo(shipID, good string, qty int) (*Order, error) {
 	}
 
 	return &br.Order, nil
+}
+
+// ##ENDPOINT Sell cargo - `/my/sell-orders`
+func (c *Client) SellCargo(shipID, good string, qty int) (*Order, error) {
+	shipID = makeLong(shipID)
+	sr := &SellRes{}
+
+	args := map[string]string{
+		"shipId":   shipID,
+		"good":     good,
+		"quantity": fmt.Sprintf("%d", qty),
+	}
+
+	if err := c.useAPI(post, "/my/sell-orders", args, sr); err != nil {
+		return nil, err
+	}
+
+	return &sr.Order, nil
 }
 
 // ##ENDPOINT Available offers - `/locations/LOCATION/marketplace`

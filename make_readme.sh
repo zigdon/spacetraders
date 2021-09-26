@@ -1,5 +1,7 @@
 #!/bin/bash 
 
+set -e
+
 rm README.md /tmp/test.readme
 
 cat <<'README' > README.md
@@ -24,11 +26,16 @@ listships OE MK-I
 buyship OE-PM-TR JW-MK-I
 myships
 buy s-1 FUEL 20
+buy s-1 METALS 25
 myships s-1
 locations oe
+createflightplan s-1 OE-PM
+showflightplan f-1
+wait f-1
+sell s-1 METALS 25
 exit
 "
-echo "$CMDS" | go run cli/cli.go --debug --echo >> README.md
+echo "$CMDS" | go run cli/cli.go --errors_fatal --debug --echo >> README.md
 
 echo '```
 

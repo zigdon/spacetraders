@@ -11,6 +11,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/chzyer/readline"
 	"github.com/zigdon/spacetraders"
@@ -18,6 +19,7 @@ import (
 
 var echo = flag.Bool("echo", false, "If true, echo commands back to stdout")
 var useCache = flag.Bool("cache", true, "If true, echo commands back to stdout")
+var errorsFatal = flag.Bool("errors_fatal", false, "If false, API errors are caught.")
 
 type cmd struct {
 	name       string
@@ -70,6 +72,9 @@ func doLoop(c *spacetraders.Client) {
 					continue
 				}
 				if err := cmd.do(c, words[1:]); err != nil {
+					if *errorsFatal {
+						log.Fatal(err)
+					}
 					fmt.Printf("Error: %v\n", err)
 				}
 				fmt.Println()
@@ -324,6 +329,29 @@ func doShowFlight(c *spacetraders.Client, args []string) error {
 	return nil
 }
 
+func doWaitForFlight(c *spacetraders.Client, args []string) error {
+	flight, err := c.ShowFlight(args[0])
+	if err != nil {
+		return fmt.Errorf("error listing flight plan %q: %v", args[0], err)
+	}
+
+	if flight.ArrivesAt.Before(time.Now()) {
+		return fmt.Errorf("flight %s (%s) already arrived", flight.ShortID, flight.ID)
+	}
+
+	// TODO: Allow interrupting the wait
+	delay := flight.ArrivesAt.Sub(time.Now()).Truncate(time.Second)
+	fmt.Printf("Waiting %s for %s (%s) to arrive...", delay, flight.ShortID, flight.ID)
+	select {
+	case <-time.After(delay):
+	case <-time.After(time.Minute):
+		fmt.Print(".")
+	}
+	fmt.Println(" Arrived!")
+
+	return nil
+}
+
 func doBuy(c *spacetraders.Client, args []string) error {
 	qty, err := strconv.Atoi(args[2])
 	if err != nil {
@@ -332,10 +360,26 @@ func doBuy(c *spacetraders.Client, args []string) error {
 
 	order, err := c.BuyCargo(args[0], args[1], qty)
 	if err != nil {
-		return fmt.Errorf("error buy goods: %v", err)
+		return fmt.Errorf("error selling goods: %v", err)
 	}
 
 	fmt.Printf("Bought %d of %s for %d\n", order.Quantity, order.Good, order.Total)
+
+	return nil
+}
+
+func doSell(c *spacetraders.Client, args []string) error {
+	qty, err := strconv.Atoi(args[2])
+	if err != nil {
+		return err
+	}
+
+	order, err := c.SellCargo(args[0], args[1], qty)
+	if err != nil {
+		return fmt.Errorf("error selling goods: %v", err)
+	}
+
+	fmt.Printf("Sold %d of %s from %d\n", order.Quantity, order.Good, order.Total)
 
 	return nil
 }
@@ -379,7 +423,7 @@ func valid(c *spacetraders.Client, kind spacetraders.CacheKey, bit string) (stri
 		return "", fmt.Errorf("No matching %ss: %v", kind, validOpts)
 	case 1:
 		if bit != matching[0] {
-			fmt.Printf("Using %q for %q", matching[0], bit)
+			fmt.Printf("Using %q for %q\n", matching[0], bit)
 		}
 		return matching[0], nil
 	default:
@@ -406,6 +450,8 @@ func validate(c *spacetraders.Client, words []string, validators []string) error
 			ck = spacetraders.SYSTEMS
 		case "ship":
 			ck = spacetraders.SHIPS
+		case "flights":
+			ck = spacetraders.FLIGHTS
 		default:
 			continue
 		}
@@ -570,14 +616,34 @@ func main() {
 			minArgs:    1,
 			maxArgs:    1,
 		},
+		"wait": {
+			section:    "Flight Plans",
+			name:       "Wait",
+			usage:      "Wait <flightPlanID>",
+			validators: []string{"flights"},
+			help:       "Wait until specified flight arrives",
+			do:         doWaitForFlight,
+			minArgs:    1,
+			maxArgs:    1,
+		},
 
 		"buy": {
 			section:    "Goods and Cargo",
 			name:       "Buy",
 			usage:      "Buy <shipID> <good> <quantity>",
 			validators: []string{"ships"},
-			help:       "Buy the specified quantiy of good for the ship identified. Partial ship IDs accepted if unique",
+			help:       "Buy the specified quantiy of good for the ship identified",
 			do:         doBuy,
+			minArgs:    3,
+			maxArgs:    3,
+		},
+		"sell": {
+			section:    "Goods and Cargo",
+			name:       "Sell",
+			usage:      "Sell <shipID> <good> <quantity>",
+			validators: []string{"ships"},
+			help:       "Sell the specified quantiy of good from the ship identified",
+			do:         doSell,
 			minArgs:    3,
 			maxArgs:    3,
 		},
