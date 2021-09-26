@@ -17,6 +17,7 @@ import (
 )
 
 var echo = flag.Bool("echo", false, "If true, echo commands back to stdout")
+var useCache = flag.Bool("cache", true, "If true, echo commands back to stdout")
 
 type cmd struct {
 	name       string
@@ -379,6 +380,9 @@ func valid(c *spacetraders.Client, kind, bit string) (string, error) {
 }
 
 func validate(c *spacetraders.Client, words []string, validators []string) error {
+	if !*useCache {
+		return nil
+	}
 	msgs := []string{}
 	for i, v := range validators {
 		switch v {
