@@ -61,21 +61,21 @@ func doLoop(c *spacetraders.Client) {
 		default:
 			if cmd, ok := commands[words[0]]; ok {
 				if len(words)-1 < cmd.minArgs || len(words)-1 > cmd.maxArgs {
-					log.Printf("Invalid arguments for %q", words[0])
+					fmt.Printf("Invalid arguments for %q\n", words[0])
 					words = []string{"help", words[0]}
 					cmd = commands["help"]
 				}
 				if err := validate(c, words[1:], cmd.validators); err != nil {
-					log.Printf("Invalid arguments: %v", err)
+					fmt.Printf("Invalid arguments: %v\n", err)
 					continue
 				}
 				if err := cmd.do(c, words[1:]); err != nil {
-					log.Printf("Error: %v", err)
+					fmt.Printf("Error: %v\n", err)
 				}
 				fmt.Println()
 				continue
 			}
-			log.Printf("Unknown command %v. Try 'help'.", words)
+			fmt.Printf("Unknown command %v. Try 'help'.\n", words)
 		}
 	}
 }
@@ -124,7 +124,7 @@ func doLogin(c *spacetraders.Client, args []string) error {
 		path = args[0]
 	}
 	if err := c.Load(path); err != nil {
-		log.Print(err)
+		fmt.Println(err)
 	}
 
 	return nil
@@ -177,7 +177,7 @@ func doTakeLoan(c *spacetraders.Client, args []string) error {
 		return fmt.Errorf("error taking out loan: %v", err)
 	}
 
-	fmt.Printf("Loan taken, id=%s, due: %s", loan.ID, loan.Due)
+	fmt.Printf("Loan taken, %s (%s), due: %s", loan.ShortID, loan.ID, loan.Due)
 
 	return nil
 }
@@ -249,7 +249,7 @@ func doBuyShip(c *spacetraders.Client, args []string) error {
 		return fmt.Errorf("error buying ship %q at %q: %v", args[1], args[0], err)
 	}
 
-	fmt.Printf("New ship ID: %s", ship.ID)
+	fmt.Printf("New ship ID: %s (%s)", ship.ShortID, ship.ID)
 
 	return nil
 }
@@ -290,7 +290,7 @@ func doCreateFlight(c *spacetraders.Client, args []string) error {
 		return fmt.Errorf("error creating flight plan to %q: %v", args[1], err)
 	}
 
-	log.Printf("Created flight plan: %s", flight.Short())
+	fmt.Printf("Created flight plan: %s\n", flight.Short())
 
 	return nil
 }
@@ -301,7 +301,7 @@ func doShowFlight(c *spacetraders.Client, args []string) error {
 		return fmt.Errorf("error listing flight plan %q: %v", args[0], err)
 	}
 
-	log.Println(flight)
+	fmt.Println(flight)
 
 	return nil
 }
@@ -317,7 +317,7 @@ func doBuy(c *spacetraders.Client, args []string) error {
 		return fmt.Errorf("error buy goods: %v", err)
 	}
 
-	log.Printf("Bought %d of %s for %d", order.Quantity, order.Good, order.Total)
+	fmt.Printf("Bought %d of %s for %d\n", order.Quantity, order.Good, order.Total)
 
 	return nil
 }
@@ -353,7 +353,7 @@ func filter(list []string, filter string) []string {
 	return res
 }
 
-func valid(c *spacetraders.Client, kind, bit string) (string, error) {
+func valid(c *spacetraders.Client, kind spacetraders.CacheKey, bit string) (string, error) {
 	validOpts := c.Restore(kind)
 	matching := filter(validOpts, bit)
 	switch len(matching) {
@@ -361,7 +361,7 @@ func valid(c *spacetraders.Client, kind, bit string) (string, error) {
 		return "", fmt.Errorf("No matching %ss: %v", kind, validOpts)
 	case 1:
 		if bit != matching[0] {
-			log.Printf("Using %q for %q", matching[0], bit)
+			fmt.Printf("Using %q for %q", matching[0], bit)
 		}
 		return matching[0], nil
 	default:
@@ -378,12 +378,20 @@ func validate(c *spacetraders.Client, words []string, validators []string) error
 		if len(words) < i-1 {
 			return nil
 		}
+		var ck spacetraders.CacheKey
 		switch v {
-		case "mylocation", "location", "system", "myships":
+		case "mylocation":
+			ck = spacetraders.MYLOCATIONS
+		case "location":
+			ck = spacetraders.LOCATIONS
+		case "system":
+			ck = spacetraders.SYSTEMS
+		case "ship":
+			ck = spacetraders.SHIPS
 		default:
 			continue
 		}
-		match, err := valid(c, v, words[i])
+		match, err := valid(c, ck, words[i])
 		if err != nil {
 			msgs = append(msgs, fmt.Sprintf("Invalid %s %q: %v", v, words[i], err))
 			continue
@@ -504,20 +512,21 @@ func main() {
 			maxArgs:    2,
 		},
 		"myships": {
-			section: "Ships",
-			name:    "MyShips",
-			usage:   "MyShips [filter]",
-			help:    "List owned ships, with an optional filter",
-			do:      doMyShips,
-			minArgs: 0,
-			maxArgs: 1,
+			section:    "Ships",
+			name:       "MyShips",
+			usage:      "MyShips [filter]",
+			validators: []string{"ships"},
+			help:       "List owned ships, with an optional filter",
+			do:         doMyShips,
+			minArgs:    0,
+			maxArgs:    1,
 		},
 
 		"createflightplan": {
 			section:    "Flight Plans",
 			name:       "CreateFlightPlan",
 			usage:      "CreateFlightPlan <shipID> <destination>",
-			validators: []string{"myships", "location"},
+			validators: []string{"ships", "location"},
 			help:       "Create a flight plan for given ship to specified destination",
 			do:         doCreateFlight,
 			minArgs:    2,
@@ -538,7 +547,7 @@ func main() {
 			section:    "Goods and Cargo",
 			name:       "Buy",
 			usage:      "Buy <shipID> <good> <quantity>",
-			validators: []string{"myships"},
+			validators: []string{"ships"},
 			help:       "Buy the specified quantiy of good for the ship identified. Partial ship IDs accepted if unique",
 			do:         doBuy,
 			minArgs:    3,

@@ -44,14 +44,14 @@ Available commands:
 Claim: Claim <username> <path/to/file>
 Claims a username, saves token to specified file
 
-> claim test26384 /tmp/test.readme
+> claim test31634 /tmp/test.readme
 
 > account
-test26384: Credits: 0, Ships: 0, Structures: 0, Joined: 2021-09-26 16:08:07.166 +0000 UTC
+test31634: Credits: 0, Ships: 0, Structures: 0, Joined: 2021-09-26 12:58:23.286 -0700 PDT
 > availableloans
 amt: 200000, needs collateral: false, rate: 40, term (days): 2, type: STARTUP
 > takeloan STARTUP
-Loan taken, id=cku1f1lxo105522515s6xvvutqdc, due: 2021-09-28 16:08:07.499 +0000 UTC
+Loan taken, ln-1 (cku1n9qhb7403515s6meecvxkp), due: 2021-09-28 19:58:23.565 +0000 UTC
 > listships OE MK-I
 JW-MK-I: Jackshaw MK-I
 speed: 1, cargo: 50, weapons: 5, plating: 5
@@ -70,7 +70,24 @@ speed: 2, cargo: 3000, weapons: 5, plating: 10
   OE-UC-AD: 473600
 
 > buyship OE-PM-TR JW-MK-I
-New ship ID: cku1f1mf1105532315s6mcksfb0u
+New ship ID: s-1 (cku1n9qzp7418315s6vm2p7q1i)
+> myships
+s-1: Jackshaw MK-I (JW-MK-I)
+ID: cku1n9qzp7418315s6vm2p7q1i
+Speed: 1, Max cargo: 50, Available space: 50, Weapons: 5, Plating: 5
+At OE-PM-TR (14, 18)
+
+> buy s-1 FUEL 20
+Bought 20 of FUEL for 60
+
+> myships s-1
+s-1: Jackshaw MK-I (JW-MK-I)
+ID: cku1n9qzp7418315s6vm2p7q1i
+Speed: 1, Max cargo: 50, Available space: 30, Weapons: 5, Plating: 5
+At OE-PM-TR (14, 18)
+Cargo:
+  20 of FUEL (20)
+
 > exit
 ```
 

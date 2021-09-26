@@ -22,9 +22,12 @@ availableloans
 takeloan STARTUP
 listships OE MK-I
 buyship OE-PM-TR JW-MK-I
+myships
+buy s-1 FUEL 20
+myships s-1
 exit
 "
-echo "$CMDS" | go run cli/cli.go --echo 2>&1 >> README.md
+echo "$CMDS" | go run cli/cli.go --debug --echo >> README.md
 
 echo '```
 
@@ -45,3 +48,5 @@ grep "// ##ENDPOINT" spacetraders.go | sed 's/.*ENDPOINT //' | sort -t\- -k2 | w
   echo "" >> README.md
 done
 
+echo ===================================
+cat README.md

@@ -3,6 +3,7 @@ package spacetraders
 import (
 	"bytes"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -13,7 +14,23 @@ import (
 	"time"
 )
 
+var useDebug = flag.Bool("debug", false, "Print out all debug statements")
+
+type Client struct {
+	username string
+	token    string
+	server   string
+	cache    map[CacheKey]*cacheItem
+}
+
 // Utils
+func debug(format string, args ...interface{}) {
+	if !*useDebug {
+		return
+	}
+	log.Output(2, fmt.Sprintf(format, args...))
+}
+
 func decodeJSON(data string, obj interface{}) error {
 	dec := json.NewDecoder(strings.NewReader(data))
 
@@ -24,36 +41,53 @@ func decodeJSON(data string, obj interface{}) error {
 	return nil
 }
 
-var (
-	shortToID  = make(map[string]string)
-	idToShort  = make(map[string]string)
-	shortIndex = make(map[string]int)
-)
-
 func New() *Client {
 	return &Client{
 		server: "https://api.spacetraders.io",
-		cache:  make(map[string]*cacheItem),
+		cache:  make(map[CacheKey]*cacheItem),
 	}
 }
 
 // Caching
-func makeShort(key string, data string) string {
+type CacheKey string
+
+const (
+	LOANS       CacheKey = "loans"
+	SHIPS       CacheKey = "ships"
+	MYLOCATIONS CacheKey = "my locations"
+	LOCATIONS   CacheKey = "all locations"
+	SYSTEMS     CacheKey = "systems"
+)
+
+type cacheItem struct {
+	expiresOn time.Time
+	data      []string
+	shorts    []string
+}
+
+var (
+	shortToID  = make(map[string]string)
+	idToShort  = make(map[string]string)
+	shortIndex = make(map[CacheKey]int)
+)
+
+func makeShort(key CacheKey, data string) string {
 	short, ok := idToShort[data]
 	if ok {
 		return short
 	}
 	var prefix string
 	switch key {
-	case "loans":
+	case LOANS:
 		prefix = "ln"
-	case "myships":
+	case SHIPS:
 		prefix = "s"
 	}
 
 	shortIndex[key]++
 	short = fmt.Sprintf("%s-%d", prefix, shortIndex[key])
 	idToShort[data] = short
+	shortToID[short] = data
 	log.Printf("Created short %q in %q for %q", short, key, data)
 	return short
 }
@@ -65,7 +99,7 @@ func makeLong(id string) string {
 	return id
 }
 
-func getShorts(key string, data []string) []string {
+func getShorts(key CacheKey, data []string) []string {
 	res := []string{}
 	for _, d := range data {
 		res = append(res, makeShort(key, d))
@@ -74,19 +108,21 @@ func getShorts(key string, data []string) []string {
 	return res
 }
 
-func (c *Client) Add(key string, data string) {
+func (c *Client) Add(key CacheKey, data string) {
 	short := makeShort(key, data)
+	if _, ok := c.cache[key]; !ok {
+		c.cache[key] = &cacheItem{}
+	}
 	c.cache[key].data = sort.StringSlice(append(c.cache[key].data, data))
 	c.cache[key].shorts = sort.StringSlice(append(c.cache[key].shorts, short))
 }
 
-func (c *Client) Store(key string, validFor time.Duration, data []string, shorts []string) {
-	log.Printf("Cashing %d %q items for %s", len(data), key, validFor)
+func (c *Client) Store(key CacheKey, validFor time.Duration, data []string, shorts []string) {
 	sort.Strings(data)
 	c.cache[key] = &cacheItem{expiresOn: time.Now().Add(validFor), data: data, shorts: shorts}
 }
 
-func (c *Client) Restore(key string) []string {
+func (c *Client) Restore(key CacheKey) []string {
 	cached, ok := c.cache[key]
 	if !ok || cached.expiresOn.Before(time.Now()) {
 		log.Printf("Cache miss: %q", key)
@@ -104,12 +140,12 @@ func (c *Client) Restore(key string) []string {
 	return cached.data
 }
 
-func (c *Client) Cache(key string) error {
+func (c *Client) Cache(key CacheKey) error {
 	switch key {
-	case "location", "system":
+	case LOCATIONS, SYSTEMS:
 		_, err := c.ListSystems()
 		return err
-	case "mylocation":
+	case MYLOCATIONS:
 		_, err := c.MyShips()
 		return err
 	default:
@@ -134,7 +170,9 @@ func (c *Client) useAPI(method httpMethod, url string, args map[string]string, o
 	} else {
 		return fmt.Errorf("Unknown method %q", method)
 	}
+	debug("Calling %q with %+v...", url, args)
 	res, err := f(url, args)
+	debug("... %v\n%s", err, res)
 	if err != nil {
 		return fmt.Errorf("error calling %q: %v", url, err)
 	}
@@ -301,8 +339,8 @@ func (c *Client) TakeLoan(name string) (*Loan, error) {
 	if err := c.useAPI(post, "/my/loans", map[string]string{"type": name}, tlr); err != nil {
 		return nil, err
 	}
-	tlr.Loan.ShortID = makeShort("loans", tlr.Loan.ID)
-	c.Add("loans", tlr.Loan.ID)
+	tlr.Loan.ShortID = makeShort(LOANS, tlr.Loan.ID)
+	c.Add(LOANS, tlr.Loan.ID)
 
 	return &tlr.Loan, nil
 }
@@ -319,10 +357,10 @@ func (c *Client) MyLoans() ([]Loan, error) {
 	shorts := []string{}
 	for i, l := range mlr.Loans {
 		ids = append(ids, l.ID)
-		mlr.Loans[i].ShortID = makeShort("loans", l.ID)
+		mlr.Loans[i].ShortID = makeShort(LOANS, l.ID)
 		shorts = append(shorts, l.ID)
 	}
-	c.Store("loans", time.Minute, ids, shorts)
+	c.Store(LOANS, time.Minute, ids, shorts)
 
 	return mlr.Loans, nil
 }
@@ -344,8 +382,8 @@ func (c *Client) ListSystems() ([]System, error) {
 			locations = append(locations, l.Symbol)
 		}
 	}
-	c.Store("system", time.Hour, systems, nil)
-	c.Store("location", time.Hour, locations, nil)
+	c.Store(SYSTEMS, time.Hour, systems, nil)
+	c.Store(LOCATIONS, time.Hour, locations, nil)
 
 	return sr.Systems, nil
 }
@@ -373,6 +411,8 @@ func (c *Client) BuyShip(location, kind string) (*Ship, error) {
 	if err := c.useAPI(post, "/my/ships", args, bsr); err != nil {
 		return nil, err
 	}
+	bsr.Ship.ShortID = makeShort(SHIPS, bsr.Ship.ID)
+	c.Add(SHIPS, bsr.Ship.ID)
 
 	return &bsr.Ship, nil
 }
@@ -390,18 +430,19 @@ func (c *Client) MyShips() ([]Ship, error) {
 	locs := []string{}
 	for i, s := range msr.Ships {
 		ids = append(ids, s.ID)
-		msr.Ships[i].ShortID = makeShort("myships", s.ID)
+		msr.Ships[i].ShortID = makeShort(SHIPS, s.ID)
 		shorts = append(shorts, s.ShortID)
 		locs = append(locs, s.Location)
 	}
-	c.Store("myships", time.Minute, ids, shorts)
-	c.Store("mylocation", time.Minute, locs, nil)
+	c.Store(SHIPS, time.Minute, ids, shorts)
+	c.Store(MYLOCATIONS, time.Minute, locs, nil)
 
 	return msr.Ships, nil
 }
 
 // ##ENDPOINT Create flight plan - `/my/flight-plans`
 func (c *Client) CreateFlight(shipID, destination string) (*FlightPlan, error) {
+	shipID = makeLong(shipID)
 	fpr := &FlightPlanRes{}
 	args := map[string]string{
 		"shipId":      shipID,
@@ -417,6 +458,7 @@ func (c *Client) CreateFlight(shipID, destination string) (*FlightPlan, error) {
 
 // ##ENDPOINT Show flight plans - `/my/flight-plans/FLIGHTID`
 func (c *Client) ShowFlight(flightID string) (*FlightPlan, error) {
+	flightID = makeLong(flightID)
 	fpr := &FlightPlanRes{}
 
 	if err := c.useAPI(get, fmt.Sprintf("/my/flight-plans/%s", flightID), nil, fpr); err != nil {
@@ -429,6 +471,7 @@ func (c *Client) ShowFlight(flightID string) (*FlightPlan, error) {
 // Goods and Cargo
 // ##ENDPOINT Buy cargo - `/my/purchase-orders`
 func (c *Client) BuyCargo(shipID, good string, qty int) (*Order, error) {
+	shipID = makeLong(shipID)
 	br := &BuyRes{}
 
 	args := map[string]string{
