@@ -19,8 +19,9 @@ help claim
 claim test$RANDOM /tmp/test.readme
 account
 availableloans
-takeLoan STARTUP
-account
+takeloan STARTUP
+listships OE MK-I
+buyship OE-PM-TR JW-MK-I
 exit
 "
 echo "$CMDS" | go run cli/cli.go --echo 2>&1 >> README.md

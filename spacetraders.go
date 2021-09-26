@@ -327,12 +327,38 @@ func (c *Client) MyShips() ([]Ship, error) {
 	locs := []string{}
 	for _, s := range msr.Ships {
 		ids = append(ids, s.ID)
-		locs = append(ids, s.Location)
+		locs = append(locs, s.Location)
 	}
 	c.Store("myships", time.Minute, ids)
 	c.Store("mylocation", time.Minute, locs)
 
 	return msr.Ships, nil
+}
+
+// ##ENDPOINT Create flight plan - `/my/flight-plans`
+func (c *Client) CreateFlight(shipID, destination string) (*FlightPlan, error) {
+	fpr := &FlightPlanRes{}
+	args := map[string]string{
+		"shipId":      shipID,
+		"destination": destination,
+	}
+
+	if err := c.useAPI(post, "/my/flight-plans", args, fpr); err != nil {
+		return nil, err
+	}
+
+	return &fpr.FlightPlan, nil
+}
+
+// ##ENDPOINT Show flight plans - `/my/flight-plans/FLIGHTID`
+func (c *Client) ShowFlight(flightID string) (*FlightPlan, error) {
+	fpr := &FlightPlanRes{}
+
+	if err := c.useAPI(get, fmt.Sprintf("/my/flight-plans/%s", flightID), nil, fpr); err != nil {
+		return nil, err
+	}
+
+	return &fpr.FlightPlan, nil
 }
 
 // Goods and Cargo

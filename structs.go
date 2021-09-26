@@ -72,6 +72,10 @@ type MarketplaceRes struct {
 	Offers []Offer `json:"marketplace"`
 }
 
+type FlightPlanRes struct {
+	FlightPlan FlightPlan `json:"flightPlan"`
+}
+
 // Core types
 
 type Loan struct {
@@ -117,8 +121,9 @@ type Ship struct {
 }
 
 func (s *Ship) Filter(word string) bool {
+	word = strings.ToLower(word)
 	for _, bit := range []string{s.Class, s.Location, s.Type} {
-		if bit == word {
+		if strings.ToLower(bit) == word {
 			return true
 		}
 	}
@@ -297,4 +302,31 @@ type Offer struct {
 func (o Offer) String() string {
 	return fmt.Sprintf("%6d x %-30s Buy: %-6d  Sell: %-6d  Spread: %-4d  Volume per unit: %d",
 		o.QuantityAvailable, o.Symbol, o.PurchasePricePerUnit, o.SellPricePerUnit, o.Spread, o.VolumePerUnit)
+}
+
+type FlightPlan struct {
+	ArrivesAt              time.Time `json:"arrivesAt"`
+	Departure              string    `json:"departure"`
+	Destination            string    `json:"destination"`
+	Distance               int       `json:"distance"`
+	FuelConsumed           int       `json:"fuelConsumed"`
+	FuelRemaining          int       `json:"fuelRemaining"`
+	ID                     string    `json:"id"`
+	ShipID                 string    `json:"shipId"`
+	TerminatedAt           time.Time `json:"terminatedAt"`
+	TimeRemainingInSeconds int       `json:"timeRemainingInSeconds"`
+}
+
+func (f FlightPlan) Short() string {
+	return fmt.Sprintf("%s: %s %s->%s, ETA: %s",
+		f.ID, f.ShipID, f.Departure, f.Destination, f.ArrivesAt.Sub(time.Now()))
+}
+
+func (f FlightPlan) String() string {
+	return strings.Join([]string{
+		fmt.Sprintf("%s: %s %s->%s", f.ID, f.ShipID, f.Departure, f.Destination),
+		fmt.Sprintf("  Arrives at: %s, ETA: %s", f.ArrivesAt, f.ArrivesAt.Sub(time.Now())),
+		fmt.Sprintf("  Fuel consumed: %d, remaining: %d", f.FuelConsumed, f.FuelRemaining),
+		fmt.Sprintf("  Distance: %d, Terminated: %s", f.Distance, f.TerminatedAt),
+	}, "\n")
 }
