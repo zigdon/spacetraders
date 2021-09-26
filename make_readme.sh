@@ -23,7 +23,7 @@ takeLoan STARTUP
 account
 exit
 "
-echo "$CMDS" | go run cli/cli.go --echo 2>&1 | sed 's/> \(.*\)/> **\1**/' >> README.md
+echo "$CMDS" | go run cli/cli.go --echo 2>&1 >> README.md
 
 echo '```
 
@@ -31,7 +31,7 @@ echo '```
 
 ' >> README.md
 
-grep "// ##ENDPOINT" spacetraders.go | sed 's/.*ENDPOINT //' | sort | while read L ; do
+grep "// ##ENDPOINT" spacetraders.go | sed 's/.*ENDPOINT //' | sort -t\- -k2 | while read L ; do
   echo "* $L" >> README.md
   echo "" >> README.md
 done
