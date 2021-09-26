@@ -388,6 +388,21 @@ func (c *Client) ListSystems() ([]System, error) {
 	return sr.Systems, nil
 }
 
+// ##ENDPOINT List locations in a system - `/systems/SYSTEM/locations`
+func (c *Client) ListLocations(system string, kind string) ([]Location, error) {
+	lr := &LocationsRes{}
+
+	args := map[string]string{
+		"type": kind,
+	}
+
+	if err := c.useAPI(get, fmt.Sprintf("/systems/%s/locations", system), args, lr); err != nil {
+		return nil, err
+	}
+
+	return lr.Locations, nil
+}
+
 // Ships
 // ##ENDPOINT List ships for purchase - `/systems/LOCATION/ship-listing`
 func (c *Client) ListShips(system string) ([]ShipListing, error) {
@@ -432,7 +447,7 @@ func (c *Client) MyShips() ([]Ship, error) {
 		ids = append(ids, s.ID)
 		msr.Ships[i].ShortID = makeShort(SHIPS, s.ID)
 		shorts = append(shorts, s.ShortID)
-		locs = append(locs, s.Location)
+		locs = append(locs, s.LocationName)
 	}
 	c.Store(SHIPS, time.Minute, ids, shorts)
 	c.Store(MYLOCATIONS, time.Minute, locs, nil)

@@ -50,6 +50,10 @@ type SystemsRes struct {
 	Systems []System `json:"systems"`
 }
 
+type LocationsRes struct {
+	Locations []Location `json:"locations"`
+}
+
 type BuyRes struct {
 	User  User  `json:"user"`
 	Order Order `json:"order"`
@@ -108,7 +112,7 @@ type Ship struct {
 	ShortFlightPlanID string
 	ID                string `json:"id"`
 	ShortID           string
-	Location          string `json:"location"`
+	LocationName      string `json:"location"`
 	Manufacturer      string `json:"manufacturer"`
 	MaxCargo          int    `json:"maxCargo"`
 	Plating           int    `json:"plating"`
@@ -122,7 +126,7 @@ type Ship struct {
 
 func (s *Ship) Filter(word string) bool {
 	word = strings.ToLower(word)
-	for _, bit := range []string{s.ShortID, s.ShortFlightPlanID, s.Class, s.Location, s.Type} {
+	for _, bit := range []string{s.ShortID, s.ShortFlightPlanID, s.Class, s.LocationName, s.Type} {
 		if strings.ToLower(bit) == word {
 			return true
 		}
@@ -145,7 +149,7 @@ func (s *Ship) String() string {
 	i("Speed: %d, Max cargo: %d, Available space: %d, Weapons: %d, Plating: %d",
 		s.Speed, s.MaxCargo, s.SpaceAvailable, s.Weapons, s.Plating)
 	if s.FlightPlanID == "" {
-		i("At %s (%d, %d)", s.Location, s.X, s.Y)
+		i("At %s (%d, %d)", s.LocationName, s.X, s.Y)
 	} else {
 		i("In flight: %s", s.FlightPlanID)
 	}
@@ -162,7 +166,7 @@ func (s *Ship) String() string {
 func (s *Ship) Short() string {
 	if s.FlightPlanID == "" {
 		return fmt.Sprintf("%s: %s %s (%s): Loc: %s (%d, %d), Space: %d",
-			s.ShortID, s.Manufacturer, s.Class, s.Type, s.Location, s.X, s.Y, s.SpaceAvailable)
+			s.ShortID, s.Manufacturer, s.Class, s.Type, s.LocationName, s.X, s.Y, s.SpaceAvailable)
 	}
 	return fmt.Sprintf("%s: %s %s (%s): Flight plan: %s, Space: %d",
 		s.ShortID, s.Manufacturer, s.Class, s.Type, s.FlightPlanID, s.SpaceAvailable)
@@ -184,8 +188,8 @@ type ShipListing struct {
 	MaxCargo          int    `json:"maxCargo"`
 	Plating           int    `json:"plating"`
 	PurchaseLocations []struct {
-		Location string `json:"location"`
-		Price    int    `json:"price"`
+		LocationName string `json:"location"`
+		Price        int    `json:"price"`
 	} `json:"purchaseLocations"`
 	Speed   int    `json:"speed"`
 	Type    string `json:"type"`
@@ -200,7 +204,7 @@ func (s ShipListing) String() string {
 	i(fmt.Sprintf("%s: %s %s", s.Type, s.Manufacturer, s.Class))
 	i(fmt.Sprintf("speed: %d, cargo: %d, weapons: %d, plating: %d", s.Speed, s.MaxCargo, s.Weapons, s.Plating))
 	for _, l := range s.PurchaseLocations {
-		i(fmt.Sprintf("  %s: %d", l.Location, l.Price))
+		i(fmt.Sprintf("  %s: %d", l.LocationName, l.Price))
 	}
 
 	return strings.Join(res, "\n")
@@ -223,19 +227,21 @@ type System struct {
 
 func (s System) String() string {
 	structs := 0
-	msgs := []string{}
+	hasMsgs := ""
 	for _, l := range s.Locations {
 		structs += len(l.Structures)
-		msgs = append(msgs, l.Messages...)
+		if len(l.Messages) > 0 {
+			hasMsgs = "(see details for more)"
+		}
 	}
-	return fmt.Sprintf("%s: %s\nLocations: %d, Structures: %d\n  %s",
-		s.Symbol, s.Name, len(s.Locations), structs, strings.Join(msgs, "\n  "))
+	return fmt.Sprintf("%s: %s\nLocations: %d, Structures: %d %s\n",
+		s.Symbol, s.Name, len(s.Locations), structs, hasMsgs)
 }
 
-func (s System) Details() string {
+func (s System) Details(indent int) string {
 	res := []string{fmt.Sprintf("%s: %s", s.Symbol, s.Name)}
 	for _, l := range s.Locations {
-		res = append(res, strings.Join(l.Details(0), "\n"))
+		res = append(res, l.Short(indent))
 	}
 	return strings.Join(res, "\n")
 }
@@ -248,25 +254,48 @@ type Location struct {
 	Y                  int         `json:"y"`
 	AllowsConstruction bool        `json:"allowsConstruction"`
 	Structures         []Structure `json:"structures"`
+	Traits             []string    `json:"traits"`
 	Messages           []string    `json:"messages,omitempty"`
 }
 
-func (l Location) Details(indent int) []string {
+func (l Location) Short(indent int) string {
+	prefix := strings.Repeat("  ", indent)
+	res := fmt.Sprintf("%s%s: %s (%d, %d)", prefix, l.Name, l.Type, l.X, l.Y)
+	if len(l.Structures) > 0 {
+		res += fmt.Sprintf(" %d structures", len(l.Structures))
+	}
+	if len(l.Messages) > 0 {
+		res += " (see details for more)"
+	}
+	return res
+}
+
+func (l Location) Details(indent int) string {
 	prefix := strings.Repeat("  ", indent)
 	var res []string
 	i := func(s string) { res = append(res, fmt.Sprintf("%s%s", prefix, s)) }
-	i(fmt.Sprintf("%s: %s (%s - %d, %d)", l.Symbol, l.Name, l.Type, l.X, l.Y))
+	i(fmt.Sprintf("%s: %s", l.Symbol, l.Name))
+	prefix = strings.Repeat("  ", indent+1)
+	i(fmt.Sprintf("Type: %s  (%d, %d)", l.Type, l.X, l.Y))
 	if l.AllowsConstruction {
 		i("Allows construction.")
+	}
+	if len(l.Traits) > 0 {
+		i(fmt.Sprintf("Traits: %v", l.Traits))
 	}
 	if len(l.Structures) > 0 {
 		i(fmt.Sprintf("%d structures:", len(l.Structures)))
 		for _, st := range l.Structures {
-			res = append(res, st.Details(indent+1)...)
+			res = append(res, st.Details(indent+1))
 		}
 		i("")
 	}
-	return res
+	if len(l.Messages) > 0 {
+		for _, m := range l.Messages {
+			i(m)
+		}
+	}
+	return strings.Join(res, "\n")
 }
 
 type Structure struct {
@@ -276,12 +305,9 @@ type Structure struct {
 	Location string `json:"location"`
 }
 
-func (st Structure) Details(indent int) []string {
+func (st Structure) Details(indent int) string {
 	prefix := strings.Repeat("  ", indent)
-	var res []string
-	i := func(s string) { res = append(res, fmt.Sprintf("%s%s", prefix, s)) }
-	i(fmt.Sprintf("%s: %s", st.ID, st.Type))
-	return res
+	return fmt.Sprintf("%s%s: %s", prefix, st.ID, st.Type)
 }
 
 type Order struct {

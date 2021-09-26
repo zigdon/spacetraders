@@ -25,6 +25,7 @@ buyship OE-PM-TR JW-MK-I
 myships
 buy s-1 FUEL 20
 myships s-1
+locations oe
 exit
 "
 echo "$CMDS" | go run cli/cli.go --debug --echo >> README.md

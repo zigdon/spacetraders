@@ -216,7 +216,25 @@ func doListSystems(c *spacetraders.Client, args []string) error {
 		return nil
 	}
 
-	fmt.Println(cache[args[0]].Details())
+	fmt.Println(cache[args[0]].Details(0))
+	return nil
+}
+
+func doListLocations(c *spacetraders.Client, args []string) error {
+	filter := ""
+	if len(args) > 1 {
+		filter = args[1]
+	}
+	locs, err := c.ListLocations(args[0], filter)
+	if err != nil {
+		return fmt.Errorf("error listing locations in %q: %v", args[0], err)
+	}
+
+	fmt.Printf("%d locations in %q:\n", len(locs), args[0])
+	for _, l := range locs {
+		fmt.Println(l.Details(1))
+	}
+
 	return nil
 }
 
@@ -488,6 +506,16 @@ func main() {
 			help:       "Get details about a system, or all systems if not specified",
 			do:         doListSystems,
 			maxArgs:    1,
+		},
+		"locations": {
+			section:    "Locations",
+			name:       "Locations",
+			usage:      "Locations <system> [type]",
+			validators: []string{"system"},
+			help:       "Show all locations in a system",
+			do:         doListLocations,
+			minArgs:    1,
+			maxArgs:    2,
 		},
 
 		"listships": {

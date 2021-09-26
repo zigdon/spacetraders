@@ -33,6 +33,7 @@ Available commands:
     ShowFlightPlan: ShowFlightPlan <flightPlanID>
 
   Locations:
+    Locations: Locations <system> [type]
     System: System [system]
 
   Goods and Cargo:
@@ -44,14 +45,14 @@ Available commands:
 Claim: Claim <username> <path/to/file>
 Claims a username, saves token to specified file
 
-> claim test31634 /tmp/test.readme
+> claim test22945 /tmp/test.readme
 
 > account
-test31634: Credits: 0, Ships: 0, Structures: 0, Joined: 2021-09-26 12:58:23.286 -0700 PDT
+test22945: Credits: 0, Ships: 0, Structures: 0, Joined: 2021-09-26 14:30:53.935 -0700 PDT
 > availableloans
 amt: 200000, needs collateral: false, rate: 40, term (days): 2, type: STARTUP
 > takeloan STARTUP
-Loan taken, ln-1 (cku1n9qhb7403515s6meecvxkp), due: 2021-09-28 19:58:23.565 +0000 UTC
+Loan taken, ln-1 (cku1qkpfl35548115s6j4xj5jue), due: 2021-09-28 21:30:54.271 +0000 UTC
 > listships OE MK-I
 JW-MK-I: Jackshaw MK-I
 speed: 1, cargo: 50, weapons: 5, plating: 5
@@ -70,10 +71,10 @@ speed: 2, cargo: 3000, weapons: 5, plating: 10
   OE-UC-AD: 473600
 
 > buyship OE-PM-TR JW-MK-I
-New ship ID: s-1 (cku1n9qzp7418315s6vm2p7q1i)
+New ship ID: s-1 (cku1qkq0i35559515s62lxdsdra)
 > myships
 s-1: Jackshaw MK-I (JW-MK-I)
-ID: cku1n9qzp7418315s6vm2p7q1i
+ID: cku1qkq0i35559515s62lxdsdra
 Speed: 1, Max cargo: 50, Available space: 50, Weapons: 5, Plating: 5
 At OE-PM-TR (14, 18)
 
@@ -82,11 +83,50 @@ Bought 20 of FUEL for 60
 
 > myships s-1
 s-1: Jackshaw MK-I (JW-MK-I)
-ID: cku1n9qzp7418315s6vm2p7q1i
+ID: cku1qkq0i35559515s62lxdsdra
 Speed: 1, Max cargo: 50, Available space: 30, Weapons: 5, Plating: 5
 At OE-PM-TR (14, 18)
 Cargo:
   20 of FUEL (20)
+
+> locations oe
+Using "OE" for "oe"10 locations in "OE":
+  OE-PM: Prime
+    Type: PLANET  (13, 16)
+    Traits: [METAL_ORES SOME_ARABLE_LAND]
+  OE-PM-TR: Tritus
+    Type: MOON  (14, 18)
+    Traits: [METAL_ORES]
+  OE-CR: Carth
+    Type: PLANET  (10, 11)
+    Traits: [METAL_ORES ARABLE_LAND RARE_METAL_ORES]
+  OE-KO: Koria
+    Type: PLANET  (-33, -36)
+    Traits: [SOME_METAL_ORES SOME_NATURAL_CHEMICALS]
+  OE-UC: Ucarro
+    Type: PLANET  (74, -15)
+    Traits: [SOME_METAL_ORES NATURAL_CHEMICALS]
+  OE-UC-AD: Ado
+    Type: MOON  (76, -14)
+    Traits: [TECHNOLOGICAL_RUINS]
+  OE-UC-OB: Obo
+    Type: MOON  (77, -16)
+    Traits: [NATURAL_CHEMICALS]
+  OE-NY: Nyon
+    Type: ASTEROID  (-58, 24)
+    Allows construction.
+  OE-BO: Bo
+    Type: GAS_GIANT  (-60, -58)
+    Allows construction.
+    Traits: [SOME_HELIUM_3]
+  OE-W-XV: Wormhole
+    Type: WORMHOLE  (87, 55)
+    Extensive research has revealed a partially functioning warp gate harnessing the power of an unstable but traversable wormhole.
+    The scientific community has determined a means of stabilizing the ancient structure.
+    Enter at your own risk.
+    GET https://api.spacetraders.io/locations/OE-W-XV/structures
+    POST https://api.spacetraders.io/structures/:structureId/deposit shipId=:shipId good=:goodSymbol quantity=:quantity
+    POST https://api.spacetraders.io/my/warp-jumps shipId=:shipId
 
 > exit
 ```
@@ -125,6 +165,8 @@ This behaviour can be disabled by passing `--nocache` to the cli.
 * List my ship - `/my/ships`
 
 * List ships for purchase - `/systems/LOCATION/ship-listing`
+
+* List locations in a system - `/systems/SYSTEM/locations`
 
 * Available loans - `/types/loans`
 
