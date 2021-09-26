@@ -138,6 +138,7 @@ func (c *Client) Get(base string, args map[string]string) (string, error) {
 	return "", fmt.Errorf("error in GET %q: rc=%d, %v", base, resp.StatusCode, err)
 }
 
+// ##ENDPOINT Game status - `/game/status`
 func (c *Client) Status() error {
 	sr := &StatusRes{}
 	if err := c.useAPI(get, "/game/status", nil, sr); err != nil {
@@ -184,6 +185,7 @@ func (c *Client) Cache(key string) error {
 }
 
 // Account
+// ##ENDPOINT Claim username - `/users/USERNAME/claim`
 func (c *Client) Claim(username string) (string, *User, error) {
 	if c.username != "" {
 		return "", nil, fmt.Errorf("Can't claim while already logged in as %q", c.username)
@@ -213,6 +215,7 @@ func (c *Client) Logout() error {
 	return nil
 }
 
+// ##ENDPOINT Account details - `/my/account`
 func (c *Client) Account() (*User, error) {
 	ar := &AccountRes{}
 	if err := c.useAPI(get, "/my/account", nil, ar); err != nil {
@@ -223,6 +226,7 @@ func (c *Client) Account() (*User, error) {
 }
 
 // Loans
+// ##ENDPOINT Available loans - `/types/loans`
 func (c *Client) AvailableLoans() ([]Loan, error) {
 	lr := &LoanRes{}
 
@@ -239,6 +243,7 @@ func (c *Client) AvailableLoans() ([]Loan, error) {
 	return lr.Loans, nil
 }
 
+// ##ENDPOINT Take out loan - `/my/loans`
 func (c *Client) TakeLoan(name string) (*Loan, error) {
 	tlr := &TakeLoanRes{}
 
@@ -249,6 +254,7 @@ func (c *Client) TakeLoan(name string) (*Loan, error) {
 	return &tlr.Loan, nil
 }
 
+// ##ENDPOINT List outstanding loans - `/my/loans`
 func (c *Client) MyLoans() ([]Loan, error) {
 	mlr := &MyLoansRes{}
 
@@ -260,6 +266,7 @@ func (c *Client) MyLoans() ([]Loan, error) {
 }
 
 // Systems
+// ##ENDPOINT List all systems - `/game/systems`
 func (c *Client) ListSystems() ([]System, error) {
 	sr := &SystemsRes{}
 
@@ -282,6 +289,7 @@ func (c *Client) ListSystems() ([]System, error) {
 }
 
 // Ships
+// ##ENDPOINT List ships for purchase - `/systems/LOCATION/ship-listing`
 func (c *Client) ListShips(system string) ([]ShipListing, error) {
 	slr := &ShipListingRes{}
 
@@ -292,6 +300,7 @@ func (c *Client) ListShips(system string) ([]ShipListing, error) {
 	return slr.Ships, nil
 }
 
+// ##ENDPOINT Buy ship - `/my/ships`
 func (c *Client) BuyShip(location, kind string) (*Ship, error) {
 	bsr := &BuyShipRes{}
 	args := map[string]string{
@@ -306,6 +315,7 @@ func (c *Client) BuyShip(location, kind string) (*Ship, error) {
 	return &bsr.Ship, nil
 }
 
+// ##ENDPOINT List my ship - `/my/ships`
 func (c *Client) MyShips() ([]Ship, error) {
 	msr := &MyShipsRes{}
 
@@ -326,6 +336,7 @@ func (c *Client) MyShips() ([]Ship, error) {
 }
 
 // Goods and Cargo
+// ##ENDPOINT Buy cargo - `/my/purchase-orders`
 func (c *Client) BuyCargo(shipID, good string, qty int) (*Order, error) {
 	br := &BuyRes{}
 
@@ -342,6 +353,7 @@ func (c *Client) BuyCargo(shipID, good string, qty int) (*Order, error) {
 	return &br.Order, nil
 }
 
+// ##ENDPOINT Available offers - `/locations/LOCATION/marketplace`
 func (c *Client) Marketplace(loc string) ([]Offer, error) {
 	mr := &MarketplaceRes{}
 

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -14,6 +15,8 @@ import (
 	"github.com/chzyer/readline"
 	"github.com/zigdon/spacetraders"
 )
+
+var echo = flag.Bool("echo", false, "If true, echo commands back to stdout")
 
 type cmd struct {
 	name       string
@@ -45,6 +48,9 @@ func doLoop(c *spacetraders.Client) {
 		}
 		if line == "" {
 			continue
+		}
+		if *echo {
+			fmt.Printf("> %s\n", line)
 		}
 
 		words := strings.Split(strings.TrimSpace(line), " ")
@@ -396,6 +402,7 @@ func validate(c *spacetraders.Client, words []string, validators []string) error
 }
 
 func main() {
+	flag.Parse()
 	c := spacetraders.New()
 
 	if err := c.Status(); err != nil {
