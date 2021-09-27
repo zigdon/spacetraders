@@ -224,8 +224,8 @@ func backoff(f func() (*http.Response, error)) (*http.Response, error) {
 
 		if ec, ok := retryable[res.StatusCode]; ok {
 			timeout = start.Add(time.Duration(ec) * time.Second)
-			log.Printf("%d: waiting %0.0f seconds before retrying, %s to deadline",
-				res.StatusCode, wait, timeout.Sub(time.Now()).Truncate(time.Second))
+			log.Printf("%d: waiting %s seconds before retrying, %s to deadline",
+				res.StatusCode, time.Duration(wait)*time.Second, timeout.Sub(time.Now()).Truncate(time.Second))
 			select {
 			case <-time.After(time.Duration(wait) * time.Second):
 			}
