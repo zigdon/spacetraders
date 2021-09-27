@@ -92,10 +92,10 @@ type Loan struct {
 func (l *Loan) String() string {
 	if l.Due.After(time.Now()) {
 		return fmt.Sprintf("id: %s, due in: %s, amt: %d, status: %s, type: %s",
-			l.ShortID, l.Due.Sub(time.Now()), l.RepaymentAmount, l.Status, l.Type)
+			l.ShortID, l.Due.Sub(time.Now()).Truncate(time.Second), l.RepaymentAmount, l.Status, l.Type)
 	}
 	return fmt.Sprintf("id: %s, was due: %s, amt: %d, status: %s, type: %s",
-		l.ShortID, l.Due.In(time.Local), l.RepaymentAmount, l.Status, l.Type)
+		l.ShortID, l.Due.Local(), l.RepaymentAmount, l.Status, l.Type)
 }
 
 type User struct {
@@ -108,7 +108,7 @@ type User struct {
 
 func (u *User) String() string {
 	return fmt.Sprintf("%s: Credits: %d, Ships: %d, Structures: %d, Joined: %s",
-		u.Username, u.Credits, u.ShipCount, u.StructureCount, u.JoinedAt.In(time.Local))
+		u.Username, u.Credits, u.ShipCount, u.StructureCount, u.JoinedAt.Local())
 }
 
 type Ship struct {
@@ -361,10 +361,18 @@ func (f FlightPlan) Short() string {
 }
 
 func (f FlightPlan) String() string {
+	var arrives string
+	if f.ArrivesAt.After(time.Now()) {
+		arrives = fmt.Sprintf("  Arrives at: %s, ETA: %s",
+			f.ArrivesAt.Local(), f.ArrivesAt.Sub(time.Now()).Truncate(time.Minute))
+	} else {
+		arrives = fmt.Sprintf("  Arrived at %s", f.ArrivesAt.Local())
+	}
+
 	return strings.Join([]string{
 		fmt.Sprintf("%s: %s %s->%s", f.ShortID, f.ShipID, f.Departure, f.Destination),
 		fmt.Sprintf("  ID: %s", f.ID),
-		fmt.Sprintf("  Arrives at: %s, ETA: %s", f.ArrivesAt, f.ArrivesAt.Sub(time.Now())),
+		arrives,
 		fmt.Sprintf("  Fuel consumed: %d, remaining: %d", f.FuelConsumed, f.FuelRemaining),
 		fmt.Sprintf("  Distance: %d, Terminated: %s", f.Distance, f.TerminatedAt),
 	}, "\n")

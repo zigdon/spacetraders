@@ -17,9 +17,12 @@ import (
 	"github.com/zigdon/spacetraders"
 )
 
-var echo = flag.Bool("echo", false, "If true, echo commands back to stdout")
-var useCache = flag.Bool("cache", true, "If true, echo commands back to stdout")
-var errorsFatal = flag.Bool("errors_fatal", false, "If false, API errors are caught")
+var (
+	echo        = flag.Bool("echo", false, "If true, echo commands back to stdout")
+	useCache    = flag.Bool("cache", true, "If true, echo commands back to stdout")
+	errorsFatal = flag.Bool("errors_fatal", false, "If false, API errors are caught")
+	logFile     = flag.String("logfile", "/tmp/spacetraders.log", "Where should the log file be saved")
+)
 
 type cmd struct {
 	name       string
@@ -63,24 +66,24 @@ func doLoop(c *spacetraders.Client) {
 		default:
 			if cmd, ok := commands[words[0]]; ok {
 				if len(words)-1 < cmd.minArgs || len(words)-1 > cmd.maxArgs {
-					fmt.Printf("Invalid arguments for %q\n", words[0])
+					errMsg("Invalid arguments for %q", words[0])
 					words = []string{"help", words[0]}
 					cmd = commands["help"]
 				}
 				if err := validate(c, words[1:], cmd.validators); err != nil {
-					fmt.Printf("Invalid arguments: %v\n", err)
+					errMsg("Invalid arguments: %v", err)
 					continue
 				}
 				if err := cmd.do(c, words[1:]); err != nil {
 					if *errorsFatal {
 						log.Fatal(err)
 					}
-					fmt.Printf("Error: %v\n", err)
+					errMsg("Error: %v", err)
 				}
-				fmt.Println()
+				out("")
 				continue
 			}
-			fmt.Printf("Unknown command %v. Try 'help'.\n", words)
+			errMsg("Unknown command %v. Try 'help'.", words)
 		}
 	}
 }
@@ -90,7 +93,7 @@ func doHelp(c *spacetraders.Client, args []string) error {
 	if len(args) > 0 {
 		cmd, ok := commands[args[0]]
 		if ok {
-			fmt.Printf("%s: %s\n%s\n", cmd.name, cmd.usage, cmd.help)
+			out("%s: %s\n%s", cmd.name, cmd.usage, cmd.help)
 			return nil
 		}
 	}
@@ -98,19 +101,22 @@ func doHelp(c *spacetraders.Client, args []string) error {
 	for _, cmd := range commands {
 		cmds[cmd.section] = append(cmds[cmd.section], cmd)
 	}
-	fmt.Println("Available commands:")
-	fmt.Println("<arguments> are required, [options] are optional.")
-	fmt.Println()
+	res := []string{
+		"Available commands:",
+		"<arguments> are required, [options] are optional.",
+		"",
+	}
 	for _, s := range []string{"", "Account", "Loans", "Ships", "Flight Plans", "Locations", "Goods and Cargo"} {
 		if s != "" {
-			fmt.Printf("  %s:\n", s)
+			res = append(res, fmt.Sprintf("  %s:", s))
 		}
 		sort.SliceStable(cmds[s], func(i, j int) bool { return cmds[s][i].name < cmds[s][j].name })
 		for _, cm := range cmds[s] {
-			fmt.Printf("    %s: %s\n", cm.name, cm.usage)
+			res = append(res, fmt.Sprintf("    %s: %s", cm.name, cm.usage))
 		}
-		fmt.Println()
+		res = append(res, "")
 	}
+	out(strings.Join(res, "\n"))
 	return nil
 }
 
@@ -119,7 +125,7 @@ func doAccount(c *spacetraders.Client, args []string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("%s", u)
+	out("%s", u)
 	return nil
 }
 
@@ -129,7 +135,7 @@ func doLogin(c *spacetraders.Client, args []string) error {
 		path = args[0]
 	}
 	if err := c.Load(path); err != nil {
-		fmt.Println(err)
+		errMsg("Error loading token: %v", err)
 	}
 
 	return nil
@@ -169,7 +175,7 @@ func doLoans(c *spacetraders.Client, args []string) error {
 	}
 
 	for _, l := range loans {
-		fmt.Printf("amt: %d, needs collateral: %v, rate: %d, term (days): %d, type: %s",
+		out("amt: %d, needs collateral: %v, rate: %d, term (days): %d, type: %s",
 			l.Amount, l.CollateralRequired, l.Rate, l.TermInDays, l.Type)
 	}
 
@@ -182,7 +188,8 @@ func doTakeLoan(c *spacetraders.Client, args []string) error {
 		return fmt.Errorf("error taking out loan: %v", err)
 	}
 
-	fmt.Printf("Loan taken, %s (%s), due: %s", loan.ShortID, loan.ID, loan.Due)
+	out("Loan taken, %s (%s), due: %s (in %s)",
+		loan.ShortID, loan.ID, loan.Due.Local(), loan.Due.Sub(time.Now()).Truncate(time.Second))
 
 	return nil
 }
@@ -194,7 +201,7 @@ func doMyLoans(c *spacetraders.Client, args []string) error {
 	}
 
 	for _, l := range loans {
-		fmt.Println(l.String())
+		out(l.String())
 	}
 
 	return nil
@@ -214,14 +221,14 @@ func doListSystems(c *spacetraders.Client, args []string) error {
 	}
 	sort.Strings(sys)
 	if len(args) == 0 {
-		fmt.Println("All systems:")
+		out("All systems:")
 		for _, sym := range sys {
-			fmt.Println(cache[sym])
+			out(cache[sym].String())
 		}
 		return nil
 	}
 
-	fmt.Println(cache[args[0]].Details(0))
+	out(cache[args[0]].Details(0))
 	return nil
 }
 
@@ -235,9 +242,9 @@ func doListLocations(c *spacetraders.Client, args []string) error {
 		return fmt.Errorf("error listing locations in %q: %v", args[0], err)
 	}
 
-	fmt.Printf("%d locations in %q:\n", len(locs), args[0])
+	out("%d locations in %q:", len(locs), args[0])
 	for _, l := range locs {
-		fmt.Println(l.Details(1))
+		out(l.Details(1))
 	}
 
 	return nil
@@ -254,13 +261,13 @@ func doListShips(c *spacetraders.Client, args []string) error {
 			if !s.Filter(args[1]) {
 				continue
 			}
-			fmt.Println(s)
+			out(s.String())
 		}
 		return nil
 	}
 
 	for _, s := range ships {
-		fmt.Println(s)
+		out(s.String())
 	}
 
 	return nil
@@ -272,7 +279,7 @@ func doBuyShip(c *spacetraders.Client, args []string) error {
 		return fmt.Errorf("error buying ship %q at %q: %v", args[1], args[0], err)
 	}
 
-	fmt.Printf("New ship ID: %s (%s)", ship.ShortID, ship.ID)
+	out("New ship ID: %s (%s)", ship.ShortID, ship.ID)
 
 	return nil
 }
@@ -295,12 +302,12 @@ func doMyShips(c *spacetraders.Client, args []string) error {
 
 	switch len(res) {
 	case 0:
-		fmt.Println("No ships found.")
+		out("No ships found.")
 	case 1:
-		fmt.Println(res[0].String())
+		out(res[0].String())
 	default:
 		for _, s := range res {
-			fmt.Println(s.Short())
+			out(s.Short())
 		}
 	}
 
@@ -313,7 +320,7 @@ func doCreateFlight(c *spacetraders.Client, args []string) error {
 		return fmt.Errorf("error creating flight plan to %q: %v", args[1], err)
 	}
 
-	fmt.Printf("Created flight plan: %s\n", flight.Short())
+	out("Created flight plan: %s", flight.Short())
 
 	return nil
 }
@@ -324,7 +331,7 @@ func doShowFlight(c *spacetraders.Client, args []string) error {
 		return fmt.Errorf("error listing flight plan %q: %v", args[0], err)
 	}
 
-	fmt.Println(flight)
+	out(flight.String())
 
 	return nil
 }
@@ -341,13 +348,13 @@ func doWaitForFlight(c *spacetraders.Client, args []string) error {
 
 	// TODO: Allow interrupting the wait
 	delay := flight.ArrivesAt.Sub(time.Now()).Truncate(time.Second)
-	fmt.Printf("Waiting %s for %s (%s) to arrive...", delay, flight.ShortID, flight.ID)
+	out("Waiting %s for %s (%s) to arrive...", delay, flight.ShortID, flight.ID)
 	select {
 	case <-time.After(delay):
 	case <-time.After(time.Minute):
-		fmt.Print(".")
+		out("... still waiting for %s", flight.ShortID)
 	}
-	fmt.Println(" Arrived!")
+	out("... %s arrived!", flight.ShortID)
 
 	return nil
 }
@@ -363,7 +370,7 @@ func doBuy(c *spacetraders.Client, args []string) error {
 		return fmt.Errorf("error selling goods: %v", err)
 	}
 
-	fmt.Printf("Bought %d of %s for %d\n", order.Quantity, order.Good, order.Total)
+	out("Bought %d of %s for %d", order.Quantity, order.Good, order.Total)
 
 	return nil
 }
@@ -379,7 +386,7 @@ func doSell(c *spacetraders.Client, args []string) error {
 		return fmt.Errorf("error selling goods: %v", err)
 	}
 
-	fmt.Printf("Sold %d of %s for %d\n", order.Quantity, order.Good, order.Total)
+	out("Sold %d of %s for %d", order.Quantity, order.Good, order.Total)
 
 	return nil
 }
@@ -390,15 +397,41 @@ func doMarket(c *spacetraders.Client, args []string) error {
 		return fmt.Errorf("error querying marketplace at %q: %v", args[0], err)
 	}
 
-	fmt.Printf("%d offers at %q:\n", len(offers), args[0])
+	out("%d offers at %q:", len(offers), args[0])
 	for _, offer := range offers {
-		fmt.Println(offer.String())
+		out(offer.String())
 	}
 
 	return nil
 }
 
 // Helpers
+func errMsg(format string, args ...interface{}) {
+	for _, l := range strings.Split(fmt.Sprintf(format, args...), "\n") {
+		fmt.Printf("! %s\n", l)
+	}
+}
+
+func warn(format string, args ...interface{}) {
+	for _, l := range strings.Split(fmt.Sprintf(format, args...), "\n") {
+		fmt.Printf("* %s\n", l)
+	}
+}
+
+func out(format string, args ...interface{}) {
+	if format == "" {
+		fmt.Println()
+		return
+	}
+	for i, l := range strings.Split(fmt.Sprintf(format, args...), "\n") {
+		if i == 0 {
+			fmt.Printf("- %s\n", l)
+			continue
+		}
+		fmt.Printf("  %s\n", l)
+	}
+}
+
 func filter(list []string, filter string) []string {
 	res := []string{}
 	lowered := strings.ToLower(filter)
@@ -423,7 +456,7 @@ func valid(c *spacetraders.Client, kind spacetraders.CacheKey, bit string) (stri
 		return "", fmt.Errorf("No matching %ss: %v", kind, validOpts)
 	case 1:
 		if bit != matching[0] {
-			fmt.Printf("Using %q for %q\n", matching[0], bit)
+			warn("Using %q for %q", matching[0], bit)
 		}
 		return matching[0], nil
 	default:
@@ -472,6 +505,12 @@ func validate(c *spacetraders.Client, words []string, validators []string) error
 
 func main() {
 	flag.Parse()
+	f, err := os.OpenFile(*logFile, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
+	if err != nil {
+		log.Fatalf("Can't open log file %q: %v", *logFile, err)
+	}
+	defer f.Close()
+	log.SetOutput(f)
 	c := spacetraders.New()
 
 	if err := c.Status(); err != nil {

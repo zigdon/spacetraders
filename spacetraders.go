@@ -209,7 +209,7 @@ func backoff(f func() (*http.Response, error)) (*http.Response, error) {
 	start := time.Now()
 	timeout := start.Add(time.Minute)
 	retryable := map[int]int{
-		422: 5,  // Unprocessable Entity
+		// 422: 5,  // Unprocessable Entity
 		429: 30, // Too many requests"
 	}
 	for {
