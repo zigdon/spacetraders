@@ -72,7 +72,7 @@ const (
 	MYLOCATIONS CacheKey = "my locations"
 	LOCATIONS   CacheKey = "all locations"
 	SYSTEMS     CacheKey = "systems"
-	FLIGHTS     CacheKey = "flight"
+	FLIGHTS     CacheKey = "flights"
 )
 
 type cacheItem struct {
@@ -134,13 +134,16 @@ func (c *Client) Add(key CacheKey, data string) {
 	if _, ok := c.cache[key]; !ok {
 		c.cache[key] = &cacheItem{}
 	}
-	c.cache[key].data = sort.StringSlice(append(c.cache[key].data, data))
-	c.cache[key].shorts = sort.StringSlice(append(c.cache[key].shorts, short))
+	newKey := c.cache[key]
+	newKey.data = sort.StringSlice(append(c.cache[key].data, data))
+	newKey.shorts = sort.StringSlice(append(c.cache[key].shorts, short))
+	newKey.expiresOn = time.Now().Add(time.Hour)
+	c.cache[key] = newKey
 }
 
-func (c *Client) Store(key CacheKey, validFor time.Duration, data []string, shorts []string) {
+func (c *Client) Store(key CacheKey, data []string, shorts []string) {
 	sort.Strings(data)
-	c.cache[key] = &cacheItem{expiresOn: time.Now().Add(validFor), data: data, shorts: shorts}
+	c.cache[key] = &cacheItem{expiresOn: time.Now().Add(time.Hour), data: data, shorts: shorts}
 }
 
 func (c *Client) Restore(key CacheKey) []string {
@@ -404,7 +407,7 @@ func (c *Client) MyLoans() ([]Loan, error) {
 		mlr.Loans[i].ShortID = makeShort(LOANS, l.ID)
 		shorts = append(shorts, l.ID)
 	}
-	c.Store(LOANS, time.Minute, ids, shorts)
+	c.Store(LOANS, ids, shorts)
 
 	return mlr.Loans, nil
 }
@@ -426,8 +429,8 @@ func (c *Client) ListSystems() ([]System, error) {
 			locations = append(locations, l.Symbol)
 		}
 	}
-	c.Store(SYSTEMS, time.Hour, systems, nil)
-	c.Store(LOCATIONS, time.Hour, locations, nil)
+	c.Store(SYSTEMS, systems, nil)
+	c.Store(LOCATIONS, locations, nil)
 
 	return sr.Systems, nil
 }
@@ -495,9 +498,9 @@ func (c *Client) MyShips() ([]Ship, error) {
 		locs = append(locs, s.LocationName)
 		locs = append(locs, s.FlightPlanID)
 	}
-	c.Store(SHIPS, time.Minute, ids, shorts)
-	c.Store(MYLOCATIONS, time.Minute, locs, nil)
-	c.Store(FLIGHTS, time.Hour, flights, nil)
+	c.Store(SHIPS, ids, shorts)
+	c.Store(MYLOCATIONS, locs, nil)
+	c.Store(FLIGHTS, flights, nil)
 
 	return msr.Ships, nil
 }
@@ -514,10 +517,11 @@ func (c *Client) CreateFlight(shipID, destination string) (*FlightPlan, error) {
 	if err := c.useAPI(post, "/my/flight-plans", args, fpr); err != nil {
 		return nil, err
 	}
-	fpr.FlightPlan.ShortID = makeShort(FLIGHTS, fpr.FlightPlan.ID)
-	c.Add(FLIGHTS, fpr.FlightPlan.ID)
+	fp := fpr.FlightPlan
+	fp.ShortID = makeShort(FLIGHTS, fp.ID)
+	c.Add(FLIGHTS, fp.ID)
 
-	return &fpr.FlightPlan, nil
+	return &fp, nil
 }
 
 // ##ENDPOINT Show flight plans - `/my/flight-plans/FLIGHTID`
@@ -528,10 +532,11 @@ func (c *Client) ShowFlight(flightID string) (*FlightPlan, error) {
 	if err := c.useAPI(get, fmt.Sprintf("/my/flight-plans/%s", flightID), nil, fpr); err != nil {
 		return nil, err
 	}
-	fpr.FlightPlan.ShortID = makeShort(FLIGHTS, fpr.FlightPlan.ID)
-	fpr.FlightPlan.ShortShipID = makeShort(SHIPS, fpr.FlightPlan.ShipID)
+	fp := fpr.FlightPlan
+	fp.ShortID = makeShort(FLIGHTS, fp.ID)
+	fp.ShortShipID = makeShort(SHIPS, fp.ShipID)
 
-	return &fpr.FlightPlan, nil
+	return &fp, nil
 }
 
 // Goods and Cargo

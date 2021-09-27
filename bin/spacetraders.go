@@ -44,7 +44,13 @@ func loop(c *spacetraders.Client) {
 		log.Fatalf("Can't readline: %v", err)
 	}
 	commands := cli.GetCommands()
+	mq := cli.GetMsgQueue()
 	for {
+		if mq.HasMsgs() {
+			for _, m := range mq.Read() {
+				cli.Out(m)
+			}
+		}
 		line, err := r.Readline()
 		if err != nil {
 			if err == io.EOF {

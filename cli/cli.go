@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/zigdon/spacetraders"
 )
@@ -22,12 +24,18 @@ type cmd struct {
 }
 
 var commands = map[string]cmd{}
+var mq *msgQueue
+
+func GetMsgQueue() *msgQueue {
+	return mq
+}
 
 func GetCommands() map[string]cmd {
 	return commands
 }
 
 func init() {
+	mq = NewMessageQueue()
 	commands = map[string]cmd{
 		"help": {
 			Name:    "Help",
@@ -265,4 +273,56 @@ func Out(format string, args ...interface{}) {
 		}
 		fmt.Printf("  %s\n", l)
 	}
+}
+
+type msg struct {
+	when time.Time
+	msg  string
+}
+
+type msgQueue struct {
+	mu   sync.Mutex
+	msgs map[string]msg
+}
+
+func NewMessageQueue() *msgQueue {
+	return &msgQueue{
+		msgs: make(map[string]msg),
+	}
+}
+
+func (m *msgQueue) HasMsgs() bool {
+	for _, v := range m.msgs {
+		if v.when.Before(time.Now()) {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (m *msgQueue) Add(key, text string, when time.Time) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if _, ok := m.msgs[key]; ok {
+		return
+	}
+	m.msgs[key] = msg{
+		msg:  text,
+		when: when,
+	}
+}
+
+func (m *msgQueue) Read() []string {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	msgs := []string{}
+	for k, v := range m.msgs {
+		if v.when.After(time.Now()) {
+			continue
+		}
+		msgs = append(msgs, v.msg)
+		delete(m.msgs, k)
+	}
+	return msgs
 }

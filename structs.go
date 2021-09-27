@@ -364,14 +364,15 @@ func (f FlightPlan) String() string {
 	var arrives string
 	if f.ArrivesAt.After(time.Now()) {
 		arrives = fmt.Sprintf("  Arrives at: %s, ETA: %s",
-			f.ArrivesAt.Local(), f.ArrivesAt.Sub(time.Now()).Truncate(time.Minute))
+			f.ArrivesAt.Local(), f.ArrivesAt.Sub(time.Now()).Truncate(time.Second))
 	} else {
 		arrives = fmt.Sprintf("  Arrived at %s", f.ArrivesAt.Local())
 	}
 
 	return strings.Join([]string{
-		fmt.Sprintf("%s: %s %s->%s", f.ShortID, f.ShipID, f.Departure, f.Destination),
+		fmt.Sprintf("%s: %s %s->%s", f.ShortID, f.ShortShipID, f.Departure, f.Destination),
 		fmt.Sprintf("  ID: %s", f.ID),
+		fmt.Sprintf("  ShipID: %s", f.ShipID),
 		arrives,
 		fmt.Sprintf("  Fuel consumed: %d, remaining: %d", f.FuelConsumed, f.FuelRemaining),
 		fmt.Sprintf("  Distance: %d, Terminated: %s", f.Distance, f.TerminatedAt),
