@@ -19,23 +19,23 @@ $ go run bin/spacetraders.go
       Logout: Logout
   
     Loans:
-      AvailableLoans: AvailableLoans
+      AvailableLoans (lsLoans): AvailableLoans
       MyLoans: MyLoans
       TakeLoan: TakeLoan <type>
   
     Ships:
       BuyShip: BuyShip <location> <type>
       ListShips: ListShips <system> [filter]
-      MyShips: MyShips [filter]
+      MyShips (lsShips): MyShips [filter]
   
     Flight Plans:
-      CreateFlightPlan: CreateFlightPlan <shipID> <destination>
-      ShowFlightPlan: ShowFlightPlan <flightPlanID>
+      CreateFlightPlan (go, fly): CreateFlightPlan <shipID> <destination>
+      ShowFlightPlan (lsFlights): ShowFlightPlan <flightPlanID>
       Wait: Wait <flightPlanID>
   
     Locations:
-      Locations: Locations <system> [type]
-      System: System [system]
+      Locations (lsLocations, lsLocs): Locations <system> [type]
+      System (lsSys): System [system]
   
     Goods and Cargo:
       Buy: Buy <shipID> <good> <quantity>
@@ -47,16 +47,16 @@ $ go run bin/spacetraders.go
 - Claim: Claim <username> <path/to/file>
   Claims a username, saves token to specified file
 
-> claim test15594 /tmp/test.readme
+> claim test2086 /tmp/test.readme
 
 > account
-- test15594: Credits: 0, Ships: 0, Structures: 0, Joined: 2021-09-26 22:04:31.881 -0700 PDT
+- test2086: Credits: 0, Ships: 0, Structures: 0, Joined: 2021-09-27 09:25:27.843 -0700 PDT
 
 > availableloans
 - amt: 200000, needs collateral: false, rate: 40, term (days): 2, type: STARTUP
 
 > takeloan STARTUP
-- Loan taken, ln-1 (cku26s2yj791915s67goigols), due: 2021-09-28 22:04:32.249 -0700 PDT (in 47h59m59s)
+- Loan taken, ln-1 (cku2v3rm82527221ds6wwmvqg3q), due: 2021-09-29 09:25:28.206 -0700 PDT (in 47h59m59s)
 
 > listships OE MK-I
 - JW-MK-I: Jackshaw MK-I
@@ -76,11 +76,11 @@ $ go run bin/spacetraders.go
     OE-UC-AD: 473600
 
 > buyship OE-PM-TR JW-MK-I
-- New ship ID: s-1 (cku26s3jz800715s6siwejax8)
+- New ship ID: s-1 (cku2v3sd42528461ds63eg4pc2c)
 
 > myships
 - s-1: Jackshaw MK-I (JW-MK-I)
-  ID: cku26s3jz800715s6siwejax8
+  ID: cku2v3sd42528461ds63eg4pc2c
   Speed: 1, Max cargo: 50, Available space: 50, Weapons: 5, Plating: 5
   At OE-PM-TR (14, 18)
 
@@ -92,7 +92,7 @@ $ go run bin/spacetraders.go
 
 > myships s-1
 - s-1: Jackshaw MK-I (JW-MK-I)
-  ID: cku26s3jz800715s6siwejax8
+  ID: cku2v3sd42528461ds63eg4pc2c
   Speed: 1, Max cargo: 50, Available space: 5, Weapons: 5, Plating: 5
   At OE-PM-TR (14, 18)
   Cargo:
@@ -144,20 +144,19 @@ $ go run bin/spacetraders.go
 
 > showflightplan f-1
 - f-1: s-1 OE-PM-TR->OE-PM
-    ID: cku26s4a7824215s6iyyhozhp
-    ShipID: cku26s3jz800715s6siwejax8
-    Arrives at: 2021-09-26 22:05:09.965 -0700 PDT, ETA: 35s
+    ID: cku2v3t1f2530821ds65r1wrfep
+    ShipID: cku2v3sd42528461ds63eg4pc2c
+    Arrives at: 2021-09-27 09:26:06.05 -0700 PDT, ETA: 35s
     Fuel consumed: 1, remaining: 19
     Distance: 2, Terminated: 0001-01-01 00:00:00 +0000 UTC
 
 > wait f-1
-- Waiting 34s for f-1 (cku26s4a7824215s6iyyhozhp) to arrive...
+- Waiting 34s for f-1 (cku2v3t1f2530821ds65r1wrfep) to arrive...
 - ... f-1 arrived!
 
 > sell s-1 METALS 25
 - Sold 25 of METALS for 975
 
-> exit
 ```
 
 ### Short IDs

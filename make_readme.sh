@@ -33,7 +33,6 @@ createflightplan s-1 OE-PM
 showflightplan f-1
 wait f-1
 sell s-1 METALS 25
-exit
 "
 echo "$CMDS" | go run bin/spacetraders.go --errors_fatal --debug --echo >> README.md
 

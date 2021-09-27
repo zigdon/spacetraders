@@ -26,7 +26,10 @@ func loop(c *spacetraders.Client) {
 	if err != nil {
 		log.Fatalf("Can't readline: %v", err)
 	}
-	commands := cli.GetCommands()
+
+	// Load all known ocmmands
+	commands, aliases, allCommands := cli.GetCommands()
+
 	mq := cli.GetMsgQueue()
 	for {
 		if mq.HasMsgs() {
@@ -50,44 +53,60 @@ func loop(c *spacetraders.Client) {
 		}
 
 		words := strings.Split(strings.TrimSpace(line), " ")
-		switch cmd := strings.ToLower(words[0]); cmd {
-		case "exit":
-			return
-		default:
-			if cmd, ok := commands[words[0]]; ok {
-				if len(words)-1 < cmd.MinArgs || len(words)-1 > cmd.MaxArgs {
-					cli.ErrMsg("Invalid arguments for %q", words[0])
-					words = []string{"help", words[0]}
-					cmd = commands["help"]
-				}
-				if err := validate(c, words[1:], cmd.Validators); err != nil {
-					cli.ErrMsg("Invalid arguments: %v", err)
-					continue
-				}
-				if err := cmd.Do(c, words[1:]); err != nil {
-					if *errorsFatal {
-						log.Fatal(err)
-					}
-					cli.ErrMsg("Error: %v", err)
-				}
-				cli.Out("")
-				continue
-			}
-			cli.ErrMsg("Unknown command %v. Try 'help'.", words)
+		matches := filter(allCommands, words[0], true)
+		switch {
+		case len(matches) == 0:
+			cli.ErrMsg("Unknown command %v. Try 'help'.", words[0])
+			continue
+		case len(matches) > 1:
+			cli.ErrMsg("%q could mean %v. Try again.", words[0], matches)
+			continue
 		}
+		if alias, ok := aliases[matches[0]]; ok {
+			words[0] = alias
+		} else {
+			words[0] = matches[0]
+		}
+		cmd, ok := commands[words[0]]
+		if !ok {
+			cli.ErrMsg("Unknown command %v. Try 'help'.", words[0])
+		}
+
+		if len(words)-1 < cmd.MinArgs || len(words)-1 > cmd.MaxArgs {
+			cli.ErrMsg("Invalid arguments for %q", words[0])
+			words = []string{"help", words[0]}
+			cmd = commands["help"]
+		}
+		if err := validate(c, words[1:], cmd.Validators); err != nil {
+			cli.ErrMsg("Invalid arguments: %v", err)
+			continue
+		}
+		if err := cmd.Do(c, words[1:]); err != nil {
+			if *errorsFatal {
+				log.Fatal(err)
+			}
+			cli.ErrMsg("Error: %v", err)
+		}
+		cli.Out("")
 	}
 }
 
 // Helpers
-func filter(list []string, filter string) []string {
+func filter(list []string, substr string, onlyPrefix bool) []string {
 	res := []string{}
-	lowered := strings.ToLower(filter)
+	lowered := strings.ToLower(substr)
+	var f func(string, string) bool
+	if onlyPrefix {
+		f = strings.HasPrefix
+	} else {
+		f = strings.Contains
+	}
 	for _, s := range list {
 		// If it's an exact match, don't bother with the rest
 		if strings.ToLower(s) == lowered {
 			return []string{s}
 		}
-		if strings.Contains(strings.ToLower(s), lowered) {
+		if f(strings.ToLower(s), lowered) {
 			res = append(res, s)
 		}
 	}
@@ -97,7 +116,7 @@ func filter(list []string, filter string) []string {
 
 func valid(c *spacetraders.Client, kind spacetraders.CacheKey, bit string) (string, error) {
 	validOpts := c.Restore(kind)
-	matching := filter(validOpts, bit)
+	matching := filter(validOpts, bit, false)
 	switch len(matching) {
 	case 0:
 		return "", fmt.Errorf("No matching %ss: %v", kind, validOpts)

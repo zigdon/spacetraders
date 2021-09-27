@@ -21,17 +21,22 @@ type cmd struct {
 	Do         func(*spacetraders.Client, []string) error
 	MinArgs    int
 	MaxArgs    int
+	Aliases    []string
 }
 
-var commands = map[string]cmd{}
-var mq *msgQueue
+var (
+	commands    map[string]cmd
+	aliases     map[string]string
+	allCommands []string
+	mq          *msgQueue
+)
 
 func GetMsgQueue() *msgQueue {
 	return mq
 }
 
-func GetCommands() map[string]cmd {
-	return commands
+func GetCommands() (map[string]cmd, map[string]string, []string) {
+	return commands, aliases, allCommands
 }
 
 func init() {
@@ -84,6 +89,7 @@ func init() {
 			Usage:   "AvailableLoans",
 			Help:    "Display currently available loans",
 			Do:      doLoans,
+			Aliases: []string{"lsLoans"},
 		},
 		"takeloan": {
 			Section: "Loans",
@@ -110,6 +116,7 @@ func init() {
 			Help:       "Get details about a system, or all systems if not specified",
 			Do:         doListSystems,
 			MaxArgs:    1,
+			Aliases:    []string{"lsSys"},
 		},
 		"locations": {
 			Section:    "Locations",
@@ -120,6 +127,7 @@ func init() {
 			Do:         doListLocations,
 			MinArgs:    1,
 			MaxArgs:    2,
+			Aliases:    []string{"lsLocations", "lsLocs"},
 		},
 
 		"listships": {
@@ -152,6 +160,7 @@ func init() {
 			Do:         doMyShips,
 			MinArgs:    0,
 			MaxArgs:    1,
+			Aliases:    []string{"lsShips"},
 		},
 
 		"createflightplan": {
@@ -163,6 +172,7 @@ func init() {
 			Do:         doCreateFlight,
 			MinArgs:    2,
 			MaxArgs:    2,
+			Aliases:    []string{"go", "fly"},
 		},
 		"showflightplan": {
 			Section:    "Flight Plans",
@@ -173,6 +183,7 @@ func init() {
 			Do:         doShowFlight,
 			MinArgs:    1,
 			MaxArgs:    1,
+			Aliases:    []string{"lsFlights"},
 		},
 		"wait": {
 			Section:    "Flight Plans",
@@ -216,13 +227,33 @@ func init() {
 			MaxArgs:    1,
 		},
 	}
+	aliases = make(map[string]string)
+	allCommands = []string{}
+	for name, cmd := range commands {
+		allCommands = append(allCommands, name)
+		if len(cmd.Aliases) > 0 {
+			aliases[strings.ToLower(name)] = name
+
+			for _, a := range cmd.Aliases {
+				aliases[strings.ToLower(a)] = name
+				allCommands = append(allCommands, a)
+			}
+		}
+	}
 }
 
 func doHelp(c *spacetraders.Client, args []string) error {
 	if len(args) > 0 {
 		cmd, ok := commands[args[0]]
+		if !ok {
+			cmd, ok = commands[aliases[args[0]]]
+		}
 		if ok {
-			Out("%s: %s\n%s", cmd.Name, cmd.Usage, cmd.Help)
+			a := ""
+			if len(cmd.Aliases) > 0 {
+				a = fmt.Sprintf("\nAliases: %s", strings.Join(cmd.Aliases, ", "))
+			}
+			Out("%s: %s\n%s%s", cmd.Name, cmd.Usage, cmd.Help, a)
 			return nil
 		}
 	}
@@ -241,7 +272,11 @@ func doHelp(c *spacetraders.Client, args []string) error {
 		}
 		sort.SliceStable(cmds[s], func(i, j int) bool { return cmds[s][i].Name < cmds[s][j].Name })
 		for _, cm := range cmds[s] {
-			res = append(res, fmt.Sprintf("    %s: %s", cm.Name, cm.Usage))
+			if len(cm.Aliases) > 0 {
+				res = append(res, fmt.Sprintf("    %s (%s): %s", cm.Name, strings.Join(cm.Aliases, ", "), cm.Usage))
+			} else {
+				res = append(res, fmt.Sprintf("    %s: %s", cm.Name, cm.Usage))
+			}
 		}
 		res = append(res, "")
 	}
