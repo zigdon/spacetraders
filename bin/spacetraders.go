@@ -67,9 +67,9 @@ func loop(c *spacetraders.Client) {
 		} else {
 			words[0] = matches[0]
 		}
-		cmd, ok := commands[words[0]]
+		cmd, ok := commands[strings.ToLower(words[0])]
 		if !ok {
-			cli.ErrMsg("Unknown command %v. Try 'help'.", words[0])
+			log.Fatalf("Command %q not found!", words[0])
 		}
 
 		if len(words)-1 < cmd.MinArgs || len(words)-1 > cmd.MaxArgs {

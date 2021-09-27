@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"log"
 	"sort"
 	"strings"
 	"sync"
@@ -25,9 +26,9 @@ type cmd struct {
 }
 
 var (
-	commands    map[string]cmd
-	aliases     map[string]string
-	allCommands []string
+	commands    = map[string]cmd{}
+	aliases     = map[string]string{}
+	allCommands = []string{}
 	mq          *msgQueue
 )
 
@@ -39,205 +40,35 @@ func GetCommands() (map[string]cmd, map[string]string, []string) {
 	return commands, aliases, allCommands
 }
 
+func Register(c cmd) error {
+	lower := strings.ToLower
+	if _, ok := commands[lower(c.Name)]; ok {
+		return fmt.Errorf("there is already a %q command", c.Name)
+	}
+
+	commands[lower(c.Name)] = c
+	allCommands = append(allCommands, c.Name)
+	for _, a := range c.Aliases {
+		aliases[lower(a)] = lower(c.Name)
+		allCommands = append(allCommands, a)
+	}
+
+	return nil
+}
+
 func init() {
 	mq = NewMessageQueue()
-	commands = map[string]cmd{
-		"help": {
+	for _, c := range []cmd{
+		{
 			Name:    "Help",
 			Usage:   "Help [command]",
 			Help:    "List all commands, or get information on a specific command",
 			Do:      doHelp,
 			MaxArgs: 1,
 		},
-
-		"account": {
-			Section: "Account",
-			Name:    "Account",
-			Usage:   "Account",
-			Help:    "Get details about the logged in account",
-			Do:      doAccount,
-		},
-		"login": {
-			Section: "Account",
-			Name:    "Login",
-			Usage:   "Login [path/to/file]",
-			Help:    "Load username and token from saved file, $HOME/.config/spacetraders.io by default",
-			Do:      doLogin,
-			MinArgs: 0,
-			MaxArgs: 1,
-		},
-		"logout": {
-			Section: "Account",
-			Name:    "Logout",
-			Usage:   "Logout",
-			Help:    "Expire the current logged in token.",
-			Do:      doLogout,
-		},
-		"claim": {
-			Section: "Account",
-			Name:    "Claim",
-			Usage:   "Claim <username> <path/to/file>",
-			Help:    "Claims a username, saves token to specified file",
-			Do:      doClaim,
-			MinArgs: 2,
-			MaxArgs: 2,
-		},
-
-		"availableloans": {
-			Section: "Loans",
-			Name:    "AvailableLoans",
-			Usage:   "AvailableLoans",
-			Help:    "Display currently available loans",
-			Do:      doLoans,
-			Aliases: []string{"lsLoans"},
-		},
-		"takeloan": {
-			Section: "Loans",
-			Name:    "TakeLoan",
-			Usage:   "TakeLoan <type>",
-			Help:    "Take out one of the available loans",
-			Do:      doTakeLoan,
-			MinArgs: 1,
-			MaxArgs: 1,
-		},
-		"myloans": {
-			Section: "Loans",
-			Name:    "MyLoans",
-			Usage:   "MyLoans",
-			Help:    "List outstanding loans",
-			Do:      doMyLoans,
-		},
-
-		"system": {
-			Section:    "Locations",
-			Name:       "System",
-			Usage:      "System [system]",
-			Validators: []string{"system"},
-			Help:       "Get details about a system, or all systems if not specified",
-			Do:         doListSystems,
-			MaxArgs:    1,
-			Aliases:    []string{"lsSys"},
-		},
-		"locations": {
-			Section:    "Locations",
-			Name:       "Locations",
-			Usage:      "Locations <system> [type]",
-			Validators: []string{"system"},
-			Help:       "Show all locations in a system",
-			Do:         doListLocations,
-			MinArgs:    1,
-			MaxArgs:    2,
-			Aliases:    []string{"lsLocations", "lsLocs"},
-		},
-
-		"listships": {
-			Section:    "Ships",
-			Name:       "ListShips",
-			Usage:      "ListShips <system> [filter]",
-			Validators: []string{"system"},
-			Help: "Show available ships at all the locations in a system. If filter is provided, " +
-				"only show ships that match in type, manufacturer, or class",
-			Do:      doListShips,
-			MinArgs: 1,
-			MaxArgs: 2,
-		},
-		"buyship": {
-			Section:    "Ships",
-			Name:       "BuyShip",
-			Usage:      "BuyShip <location> <type>",
-			Validators: []string{"location"},
-			Help:       "Buy the given ship in the specified location",
-			Do:         doBuyShip,
-			MinArgs:    2,
-			MaxArgs:    2,
-		},
-		"myships": {
-			Section:    "Ships",
-			Name:       "MyShips",
-			Usage:      "MyShips [filter]",
-			Validators: []string{"ships"},
-			Help:       "List owned ships, with an optional filter",
-			Do:         doMyShips,
-			MinArgs:    0,
-			MaxArgs:    1,
-			Aliases:    []string{"lsShips"},
-		},
-
-		"createflightplan": {
-			Section:    "Flight Plans",
-			Name:       "CreateFlightPlan",
-			Usage:      "CreateFlightPlan <shipID> <destination>",
-			Validators: []string{"ships", "location"},
-			Help:       "Create a flight plan for given ship to specified destination",
-			Do:         doCreateFlight,
-			MinArgs:    2,
-			MaxArgs:    2,
-			Aliases:    []string{"go", "fly"},
-		},
-		"showflightplan": {
-			Section:    "Flight Plans",
-			Name:       "ShowFlightPlan",
-			Usage:      "ShowFlightPlan <flightPlanID>",
-			Validators: []string{"flights"},
-			Help:       "Show the flight plan identified",
-			Do:         doShowFlight,
-			MinArgs:    1,
-			MaxArgs:    1,
-			Aliases:    []string{"lsFlights"},
-		},
-		"wait": {
-			Section:    "Flight Plans",
-			Name:       "Wait",
-			Usage:      "Wait <flightPlanID>",
-			Validators: []string{"flights"},
-			Help:       "Wait until specified flight arrives",
-			Do:         doWaitForFlight,
-			MinArgs:    1,
-			MaxArgs:    1,
-		},
-
-		"buy": {
-			Section:    "Goods and Cargo",
-			Name:       "Buy",
-			Usage:      "Buy <shipID> <good> <quantity>",
-			Validators: []string{"ships"},
-			Help:       "Buy the specified quantiy of good for the ship identified",
-			Do:         doBuy,
-			MinArgs:    3,
-			MaxArgs:    3,
-		},
-		"sell": {
-			Section:    "Goods and Cargo",
-			Name:       "Sell",
-			Usage:      "Sell <shipID> <good> <quantity>",
-			Validators: []string{"ships"},
-			Help:       "Sell the specified quantiy of good from the ship identified",
-			Do:         doSell,
-			MinArgs:    3,
-			MaxArgs:    3,
-		},
-		"market": {
-			Section:    "Goods and Cargo",
-			Name:       "Market",
-			Usage:      "Market <location>",
-			Validators: []string{"mylocation"},
-			Help:       "List all goods offered at location.",
-			Do:         doMarket,
-			MinArgs:    1,
-			MaxArgs:    1,
-		},
-	}
-	aliases = make(map[string]string)
-	allCommands = []string{}
-	for name, cmd := range commands {
-		allCommands = append(allCommands, name)
-		if len(cmd.Aliases) > 0 {
-			aliases[strings.ToLower(name)] = name
-
-			for _, a := range cmd.Aliases {
-				aliases[strings.ToLower(a)] = name
-				allCommands = append(allCommands, a)
-			}
+	} {
+		if err := Register(c); err != nil {
+			log.Fatalf("Can't register %q: %v", c.Name, err)
 		}
 	}
 }
