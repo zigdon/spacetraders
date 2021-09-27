@@ -2,7 +2,7 @@
 
 set -e
 
-rm README.md /tmp/test.readme
+rm -f README.md /tmp/test.readme
 
 cat <<'README' > README.md
 Implementing [Space Traders](https://spacetraders.io) API in Go.

@@ -19,7 +19,7 @@ import (
 
 var echo = flag.Bool("echo", false, "If true, echo commands back to stdout")
 var useCache = flag.Bool("cache", true, "If true, echo commands back to stdout")
-var errorsFatal = flag.Bool("errors_fatal", false, "If false, API errors are caught.")
+var errorsFatal = flag.Bool("errors_fatal", false, "If false, API errors are caught")
 
 type cmd struct {
 	name       string
@@ -379,7 +379,7 @@ func doSell(c *spacetraders.Client, args []string) error {
 		return fmt.Errorf("error selling goods: %v", err)
 	}
 
-	fmt.Printf("Sold %d of %s from %d\n", order.Quantity, order.Good, order.Total)
+	fmt.Printf("Sold %d of %s for %d\n", order.Quantity, order.Good, order.Total)
 
 	return nil
 }

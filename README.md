@@ -47,14 +47,14 @@ Available commands:
 Claim: Claim <username> <path/to/file>
 Claims a username, saves token to specified file
 
-> claim test25356 /tmp/test.readme
+> claim test5710 /tmp/test.readme
 
 > account
-test25356: Credits: 0, Ships: 0, Structures: 0, Joined: 2021-09-26 16:08:21.983 -0700 PDT
+test5710: Credits: 0, Ships: 0, Structures: 0, Joined: 2021-09-26 18:02:08.58 -0700 PDT
 > availableloans
 amt: 200000, needs collateral: false, rate: 40, term (days): 2, type: STARTUP
 > takeloan STARTUP
-Loan taken, ln-1 (cku1u21tk66101215s6w867952k), due: 2021-09-28 23:08:22.326 +0000 UTC
+Loan taken, ln-1 (cku1y4d9o102261415s6qhwedone), due: 2021-09-29 01:02:08.939 +0000 UTC
 > listships OE MK-I
 JW-MK-I: Jackshaw MK-I
 speed: 1, cargo: 50, weapons: 5, plating: 5
@@ -73,22 +73,22 @@ speed: 2, cargo: 3000, weapons: 5, plating: 10
   OE-UC-AD: 473600
 
 > buyship OE-PM-TR JW-MK-I
-New ship ID: s-1 (cku1u22d166116115s6dpqoly18)
+New ship ID: s-1 (cku1y4dtw102272015s6jrd9fzgq)
 > myships
 s-1: Jackshaw MK-I (JW-MK-I)
-ID: cku1u22d166116115s6dpqoly18
+ID: cku1y4dtw102272015s6jrd9fzgq
 Speed: 1, Max cargo: 50, Available space: 50, Weapons: 5, Plating: 5
 At OE-PM-TR (14, 18)
 
 > buy s-1 FUEL 20
-Bought 20 of FUEL for 60
+Bought 20 of FUEL for 80
 
 > buy s-1 METALS 25
 Bought 25 of METALS for 100
 
 > myships s-1
 s-1: Jackshaw MK-I (JW-MK-I)
-ID: cku1u22d166116115s6dpqoly18
+ID: cku1y4dtw102272015s6jrd9fzgq
 Speed: 1, Max cargo: 50, Available space: 5, Weapons: 5, Plating: 5
 At OE-PM-TR (14, 18)
 Cargo:
@@ -139,17 +139,17 @@ Using "OE" for "oe"
 Created flight plan: f-1:  OE-PM-TR->OE-PM, ETA: 35s
 
 > showflightplan f-1
-f-1: cku1u22d166116115s6dpqoly18 OE-PM-TR->OE-PM
-  ID: cku1u239u66156615s6s11xt35l
-  Arrives at: 2021-09-26 23:09:00.206 +0000 UTC, ETA: 35.800345133s
+f-1: cku1y4dtw102272015s6jrd9fzgq OE-PM-TR->OE-PM
+  ID: cku1y4epb102306415s6igy464lc
+  Arrives at: 2021-09-27 01:02:46.798 +0000 UTC, ETA: 35.821294589s
   Fuel consumed: 1, remaining: 19
   Distance: 2, Terminated: 0001-01-01 00:00:00 +0000 UTC
 
 > wait f-1
-Waiting 34s for f-1 (cku1u239u66156615s6s11xt35l) to arrive... Arrived!
+Waiting 34s for f-1 (cku1y4epb102306415s6igy464lc) to arrive... Arrived!
 
 > sell s-1 METALS 25
-Sold 25 of METALS from 1000
+Sold 25 of METALS from 975
 
 > exit
 ```

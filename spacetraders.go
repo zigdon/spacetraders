@@ -204,28 +204,36 @@ func (c *Client) useAPI(method httpMethod, url string, args map[string]string, o
 	return nil
 }
 
-func backoff(deadline int, f func() (*http.Response, error)) (*http.Response, error) {
+func backoff(f func() (*http.Response, error)) (*http.Response, error) {
 	wait := 1.0
 	start := time.Now()
+	timeout := start.Add(time.Minute)
+	retryable := map[int]int{
+		422: 5,  // Unprocessable Entity
+		429: 30, // Too many requests"
+	}
 	for {
 		res, err := f()
 		if err != nil {
-			return nil, err
+			return res, err
 		}
 
-		if res.StatusCode != 429 { // Too many requests
-			return res, nil
+		if timeout.Before(time.Now()) {
+			return res, fmt.Errorf("backoff deadline exceeded")
 		}
 
-		if start.Add(time.Duration(deadline)).After(time.Now()) {
-			return nil, fmt.Errorf("backoff deadline of %d seconds exceeded", deadline)
+		if ec, ok := retryable[res.StatusCode]; ok {
+			timeout = start.Add(time.Duration(ec) * time.Second)
+			log.Printf("%d: waiting %0.0f seconds before retrying, %s to deadline",
+				res.StatusCode, wait, timeout.Sub(time.Now()).Truncate(time.Second))
+			select {
+			case <-time.After(time.Duration(wait) * time.Second):
+			}
+			wait *= 1.5
+			continue
 		}
 
-		log.Printf("Too many requests, waiting %0.0f seconds, deadline %d", wait, deadline)
-		select {
-		case <-time.After(time.Duration(wait) * time.Second):
-		}
-		wait *= 1.5
+		return res, nil
 	}
 }
 
@@ -248,7 +256,7 @@ func (c *Client) Post(base string, args map[string]string) (string, error) {
 	}
 	body := bytes.NewBuffer(jsonBody)
 
-	resp, err := backoff(30, func() (*http.Response, error) {
+	resp, err := backoff(func() (*http.Response, error) {
 		return http.Post(uri, "application/json", body)
 	})
 
@@ -259,10 +267,10 @@ func (c *Client) Post(base string, args map[string]string) (string, error) {
 	}
 
 	if resp != nil {
-		return "", fmt.Errorf("error in POST %q: (rc=%d) %q %v", base, resp.StatusCode, resp.Status, err)
+		return "", fmt.Errorf("error in POST %q (rc=%d %q): %v", base, resp.StatusCode, resp.Status, err)
 	}
 
-	return "", fmt.Errorf("error in POST %q: (rc=%d) %v", base, resp.StatusCode, err)
+	return "", fmt.Errorf("error in POST %q: (nil response) %v", base, err)
 }
 
 func (c *Client) Get(base string, args map[string]string) (string, error) {
@@ -284,7 +292,7 @@ func (c *Client) Get(base string, args map[string]string) (string, error) {
 	if len(values) > 0 {
 		uri += "?" + values.Encode()
 	}
-	resp, err := backoff(30, func() (*http.Response, error) {
+	resp, err := backoff(func() (*http.Response, error) {
 		return http.Get(uri)
 	})
 	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
