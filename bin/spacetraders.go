@@ -20,23 +20,6 @@ var (
 	errorsFatal = flag.Bool("errors_fatal", false, "If false, API errors are caught")
 )
 
-func main() {
-	flag.Parse()
-	f, err := os.OpenFile(*logFile, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
-	if err != nil {
-		log.Fatalf("Can't open log file %q: %v", *logFile, err)
-	}
-	defer f.Close()
-	log.SetOutput(f)
-	c := spacetraders.New()
-
-	if err := c.Status(); err != nil {
-		log.Fatalf("Game down: %v", err)
-	}
-
-	loop(c)
-}
-
 // Main input loop
 func loop(c *spacetraders.Client) {
 	r, err := readline.New("> ")
@@ -165,4 +148,27 @@ func validate(c *spacetraders.Client, words []string, validators []string) error
 	}
 
 	return nil
+}
+
+func main() {
+	flag.Parse()
+	f, err := os.OpenFile(*logFile, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
+	if err != nil {
+		log.Fatalf("Can't open log file %q: %v", *logFile, err)
+	}
+	defer f.Close()
+	log.SetOutput(f)
+	c := spacetraders.New()
+
+	if err := c.Status(); err != nil {
+		log.Fatalf("Game down: %v", err)
+	}
+
+	if flag.NArg() > 0 {
+		if err := c.Load(flag.Arg(0)); err != nil {
+			log.Fatalf("Can't login with %q: %v", flag.Arg(0), err)
+		}
+	}
+
+	loop(c)
 }
