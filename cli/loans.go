@@ -34,6 +34,13 @@ func init() {
 			Help:    "List outstanding loans",
 			Do:      doMyLoans,
 		},
+		{
+			Section: "Loans",
+			Name:    "PayLoan",
+			Usage:   "PayLoan <loanID>",
+			Help:    "Pay an outstanding loan",
+			Do:      doPayLoan,
+		},
 	} {
 		if err := Register(c); err != nil {
 			log.Fatalf("Can't register %q: %v", c.Name, err)
@@ -78,4 +85,14 @@ func doMyLoans(c *spacetraders.Client, args []string) error {
 	}
 
 	return nil
+}
+
+func doPayLoan(c *spacetraders.Client, args []string) error {
+	err := c.PayLoan(args[0])
+	if err != nil {
+		return fmt.Errorf("error paying loan off: %v", err)
+	}
+
+	Out("Loan paid. Current loans:")
+	return doMyLoans(c, args)
 }

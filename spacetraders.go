@@ -412,6 +412,17 @@ func (c *Client) MyLoans() ([]Loan, error) {
 	return mlr.Loans, nil
 }
 
+// ##ENDPOINT Pay off a loan - `/my/loans/LOANID`
+func (c *Client) PayLoan(loanID string) error {
+	plr := &PayLoanRes{}
+
+	if err := c.useAPI(post, fmt.Sprintf("/my/loans/%s", loanID), nil, plr); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // Systems
 // ##ENDPOINT List all systems - `/game/systems`
 func (c *Client) ListSystems() ([]System, error) {

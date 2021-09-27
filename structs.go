@@ -33,6 +33,11 @@ type MyLoansRes struct {
 	Loans []Loan `json:"loans"`
 }
 
+type PayLoanRes struct {
+	Credits int    `json:"credits"`
+	Loans   []Loan `json:"loans"`
+}
+
 type BuyShipRes struct {
 	User User `json:"user"`
 	Ship Ship `json:"ship"`
@@ -75,7 +80,6 @@ type FlightPlanRes struct {
 }
 
 // Core types
-
 type Loan struct {
 	Due                time.Time `json:"due"`
 	ID                 string    `json:"id"`
