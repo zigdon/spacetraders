@@ -25,12 +25,14 @@ func loop(c *spacetraders.Client) {
 		log.Fatalf("Can't readline: %v", err)
 	}
 
-	mq := cli.GetMsgQueue()
+	tq := cli.GetTaskQueue()
 	for {
-		if mq.HasMsgs() {
-			for _, m := range mq.Read() {
-				cli.Out(m)
-			}
+		msgs, err := tq.ProcessTasks()
+		if err != nil {
+			cli.Warn("Error processing background tasks: %v", err)
+		}
+		for _, m := range msgs {
+			cli.Out(m)
 		}
 		line, stop := getLine(r)
 		if stop {

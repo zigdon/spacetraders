@@ -6,8 +6,6 @@ import (
 	"log"
 	"sort"
 	"strings"
-	"sync"
-	"time"
 
 	"github.com/zigdon/spacetraders"
 )
@@ -32,12 +30,7 @@ var (
 	commands    = map[string]*cmd{}
 	aliases     = map[string]string{}
 	allCommands = []string{}
-	mq          *msgQueue
 )
-
-func GetMsgQueue() *msgQueue {
-	return mq
-}
 
 func Register(c cmd) error {
 	lower := strings.ToLower
@@ -170,7 +163,6 @@ func validate(c *spacetraders.Client, words []string, validators []string) error
 }
 
 func init() {
-	mq = NewMessageQueue()
 	for _, c := range []cmd{
 		{
 			Name:    "Help",
@@ -252,56 +244,4 @@ func Out(format string, args ...interface{}) {
 		}
 		fmt.Printf("  %s\n", l)
 	}
-}
-
-type msg struct {
-	when time.Time
-	msg  string
-}
-
-type msgQueue struct {
-	mu   sync.Mutex
-	msgs map[string]msg
-}
-
-func NewMessageQueue() *msgQueue {
-	return &msgQueue{
-		msgs: make(map[string]msg),
-	}
-}
-
-func (m *msgQueue) HasMsgs() bool {
-	for _, v := range m.msgs {
-		if v.when.Before(time.Now()) {
-			return true
-		}
-	}
-
-	return false
-}
-
-func (m *msgQueue) Add(key, text string, when time.Time) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	if _, ok := m.msgs[key]; ok {
-		return
-	}
-	m.msgs[key] = msg{
-		msg:  text,
-		when: when,
-	}
-}
-
-func (m *msgQueue) Read() []string {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	msgs := []string{}
-	for k, v := range m.msgs {
-		if v.when.After(time.Now()) {
-			continue
-		}
-		msgs = append(msgs, v.msg)
-		delete(m.msgs, k)
-	}
-	return msgs
 }
