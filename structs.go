@@ -39,16 +39,17 @@ type PayLoanRes struct {
 }
 
 type BuyShipRes struct {
-	User User `json:"user"`
-	Ship Ship `json:"ship"`
+	Credits int  `json:"credits"`
+	Ship    Ship `json:"ship"`
 }
 
 type MyShipsRes struct {
-	Ships []Ship `json:"ships"`
+	Credits int    `json:"credits"`
+	Ships   []Ship `json:"ships"`
 }
 
 type ShipListingRes struct {
-	Ships []ShipListing `json:"shipListings"`
+	Ships []Ship `json:"shipListings"`
 }
 
 type SystemsRes struct {
@@ -60,9 +61,9 @@ type LocationsRes struct {
 }
 
 type BuyRes struct {
-	User  User  `json:"user"`
-	Order Order `json:"order"`
-	Ship  Ship  `json:"ship"`
+	Credits int   `json:"credits"`
+	Order   Order `json:"order"`
+	Ship    Ship  `json:"ship"`
 }
 
 type SellRes struct {
@@ -103,11 +104,13 @@ func (l *Loan) String() string {
 }
 
 type User struct {
+	Username       string    `json:"username"`
 	Credits        int       `json:"credits"`
 	JoinedAt       time.Time `json:"joinedAt"`
+	Loans          []Loan    `json:"loans"`
+	Ships          []Ship    `json:"ships"`
 	ShipCount      int       `json:"shipCount"`
 	StructureCount int       `json:"structureCount"`
-	Username       string    `json:"username"`
 }
 
 func (u *User) String() string {
@@ -133,11 +136,17 @@ type Ship struct {
 	Weapons           int    `json:"weapons"`
 	X                 int    `json:"x"`
 	Y                 int    `json:"y"`
+	PurchaseLocations []struct {
+		System       string `json:"system"`
+		LocationName string `json:"location"`
+		Price        int    `json:"price"`
+	} `json:"purchaseLocations"`
+	RestrictedGoods []string `json:"restrictedGoods,omitempty"`
 }
 
 func (s *Ship) Filter(word string) bool {
 	word = strings.ToLower(word)
-	for _, bit := range []string{s.ShortID, s.ShortFlightPlanID, s.Class, s.LocationName, s.Type} {
+	for _, bit := range []string{s.ShortID, s.ShortFlightPlanID, s.Class, s.LocationName, s.Type, s.Manufacturer} {
 		if strings.ToLower(bit) == word {
 			return true
 		}
@@ -183,31 +192,7 @@ func (s *Ship) Short() string {
 		s.ShortID, s.Manufacturer, s.Class, s.Type, s.FlightPlanID, s.SpaceAvailable)
 }
 
-type Cargo struct {
-	Good        string `json:"good"`
-	Quantity    int    `json:"quantity"`
-	TotalVolume int    `json:"totalVolume"`
-}
-
-func (c Cargo) String() string {
-	return fmt.Sprintf("%d of %s (%d)", c.Quantity, c.Good, c.TotalVolume)
-}
-
-type ShipListing struct {
-	Class             string `json:"class"`
-	Manufacturer      string `json:"manufacturer"`
-	MaxCargo          int    `json:"maxCargo"`
-	Plating           int    `json:"plating"`
-	PurchaseLocations []struct {
-		LocationName string `json:"location"`
-		Price        int    `json:"price"`
-	} `json:"purchaseLocations"`
-	Speed   int    `json:"speed"`
-	Type    string `json:"type"`
-	Weapons int    `json:"weapons"`
-}
-
-func (s ShipListing) String() string {
+func (s Ship) Listing() string {
 	res := []string{}
 	i := func(st string) {
 		res = append(res, st)
@@ -221,13 +206,14 @@ func (s ShipListing) String() string {
 	return strings.Join(res, "\n")
 }
 
-func (s ShipListing) Filter(word string) bool {
-	for _, bit := range []string{s.Type, s.Manufacturer, s.Class} {
-		if bit == word {
-			return true
-		}
-	}
-	return false
+type Cargo struct {
+	Good        string `json:"good"`
+	Quantity    int    `json:"quantity"`
+	TotalVolume int    `json:"totalVolume"`
+}
+
+func (c Cargo) String() string {
+	return fmt.Sprintf("%d of %s (%d)", c.Quantity, c.Good, c.TotalVolume)
 }
 
 type System struct {
@@ -312,6 +298,7 @@ func (l Location) Details(indent int) string {
 type Structure struct {
 	ID       string `json:"id"`
 	ShortID  string
+	OwnedBy  User   `json:"ownedBy"`
 	Type     string `json:"type"`
 	Location string `json:"location"`
 }
@@ -345,6 +332,7 @@ func (o Offer) String() string {
 
 type FlightPlan struct {
 	ArrivesAt              time.Time `json:"arrivesAt"`
+	CreatedAt              time.Time `json:"createdAt"`
 	Departure              string    `json:"departure"`
 	Destination            string    `json:"destination"`
 	Distance               int       `json:"distance"`

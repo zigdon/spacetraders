@@ -54,7 +54,7 @@ func doBuy(c *spacetraders.Client, args []string) error {
 
 	order, err := c.BuyCargo(args[0], args[1], qty)
 	if err != nil {
-		return fmt.Errorf("error selling goods: %v", err)
+		return fmt.Errorf("error buying goods: %v", err)
 	}
 
 	Out("Bought %d of %s for %d", order.Quantity, order.Good, order.Total)

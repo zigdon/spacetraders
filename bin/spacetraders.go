@@ -177,6 +177,7 @@ func main() {
 	}
 	defer f.Close()
 	log.SetOutput(f)
+	log.Print("CLI starting...")
 	c := spacetraders.New()
 
 	if err := c.Status(); err != nil {
@@ -190,4 +191,5 @@ func main() {
 	}
 
 	loop(c)
+	log.Print("Exiting CLI.\n\n")
 }

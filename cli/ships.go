@@ -87,18 +87,11 @@ func doListShips(c *spacetraders.Client, args []string) error {
 		return fmt.Errorf("error listing ships in %q: %v", args[0], err)
 	}
 
-	if len(args) > 1 {
-		for _, s := range ships {
-			if !s.Filter(args[1]) {
-				continue
-			}
-			Out(s.String())
-		}
-		return nil
-	}
-
 	for _, s := range ships {
-		Out(s.String())
+		if len(args) > 1 && !s.Filter(args[1]) {
+			continue
+		}
+		Out(s.Listing())
 	}
 
 	return nil

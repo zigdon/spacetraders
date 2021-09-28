@@ -33,9 +33,10 @@ func debug(format string, args ...interface{}) {
 
 func decodeJSON(data string, obj interface{}) error {
 	dec := json.NewDecoder(strings.NewReader(data))
+	dec.DisallowUnknownFields()
 
 	if err := dec.Decode(obj); err != nil {
-		return fmt.Errorf("error decoding json: %v\n%s", err, data)
+		return fmt.Errorf("error decoding json into %#v: %v\n%s", obj, err, data)
 	}
 
 	return nil
@@ -185,7 +186,32 @@ const (
 	get  httpMethod = "GET"
 )
 
+var calls []time.Time
+
+func rateLimit() {
+	defer func() {
+		calls = append(calls, time.Now())
+	}()
+	var exp time.Time
+	for i, c := range calls {
+		exp = c.Add(time.Second)
+		if exp.After(time.Now()) {
+			calls = calls[i:]
+			break
+		}
+	}
+	wait := exp.Sub(time.Now())
+	if wait < 0 || len(calls) < 2 {
+		return
+	}
+	log.Printf("Waiting %s for rate limit", wait.Truncate(time.Millisecond))
+	select {
+	case <-time.After(wait):
+	}
+}
+
 func (c *Client) useAPI(method httpMethod, url string, args map[string]string, obj interface{}) error {
+	rateLimit()
 	var f func(string, map[string]string) (string, error)
 	if method == post {
 		f = c.Post
@@ -463,7 +489,7 @@ func (c *Client) ListLocations(system string, kind string) ([]Location, error) {
 
 // Ships
 // ##ENDPOINT List ships for purchase - `/systems/LOCATION/ship-listing`
-func (c *Client) ListShips(system string) ([]ShipListing, error) {
+func (c *Client) ListShips(system string) ([]Ship, error) {
 	slr := &ShipListingRes{}
 
 	if err := c.useAPI(get, fmt.Sprintf("/systems/%s/ship-listings", system), nil, slr); err != nil {
