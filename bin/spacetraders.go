@@ -6,7 +6,6 @@ import (
 	"io"
 	"log"
 	"os"
-	"strings"
 
 	"github.com/chzyer/readline"
 	"github.com/zigdon/spacetraders"
@@ -16,7 +15,6 @@ import (
 var (
 	echo        = flag.Bool("echo", false, "If true, echo commands back to stdout")
 	logFile     = flag.String("logfile", "/tmp/spacetraders.log", "Where should the log file be saved")
-	useCache    = flag.Bool("cache", true, "If true, echo commands back to stdout")
 	errorsFatal = flag.Bool("errors_fatal", false, "If false, API errors are caught")
 )
 
@@ -27,9 +25,6 @@ func loop(c *spacetraders.Client) {
 		log.Fatalf("Can't readline: %v", err)
 	}
 
-	// Load all known ocmmands
-	commands, aliases, allCommands := cli.GetCommands()
-
 	mq := cli.GetMsgQueue()
 	for {
 		if mq.HasMsgs() {
@@ -37,51 +32,17 @@ func loop(c *spacetraders.Client) {
 				cli.Out(m)
 			}
 		}
-		line, err := r.Readline()
-		if err != nil {
-			if err == io.EOF {
-				return
-			}
-			log.Printf("Error while reading input: %v", err)
+		line, stop := getLine(r)
+		if stop {
 			break
 		}
-		if line == "" {
+
+		cmd, args, err := cli.ParseLine(c, line)
+		if err != nil {
 			continue
-		}
-		if *echo {
-			fmt.Printf("> %s\n", line)
 		}
 
-		words := strings.Split(strings.TrimSpace(line), " ")
-		matches := filter(allCommands, words[0], true)
-		switch {
-		case len(matches) == 0:
-			cli.ErrMsg("Unknown command %v. Try 'help'.", words[0])
-			continue
-		case len(matches) > 1:
-			cli.ErrMsg("%q could mean %v. Try again.", words[0], matches)
-			continue
-		}
-		if alias, ok := aliases[matches[0]]; ok {
-			words[0] = alias
-		} else {
-			words[0] = matches[0]
-		}
-		cmd, ok := commands[strings.ToLower(words[0])]
-		if !ok {
-			log.Fatalf("Command %q not found!", words[0])
-		}
-
-		if len(words)-1 < cmd.MinArgs || len(words)-1 > cmd.MaxArgs {
-			cli.ErrMsg("Invalid arguments for %q", words[0])
-			words = []string{"help", words[0]}
-			cmd = commands["help"]
-		}
-		if err := validate(c, words[1:], cmd.Validators); err != nil {
-			cli.ErrMsg("Invalid arguments: %v", err)
-			continue
-		}
-		if err := cmd.Do(c, words[1:]); err != nil {
+		if err := cmd.Do(c, args); err != nil {
 			if *errorsFatal {
 				log.Fatal(err)
 			}
@@ -91,82 +52,25 @@ func loop(c *spacetraders.Client) {
 	}
 }
 
-// Helpers
-func filter(list []string, substr string, onlyPrefix bool) []string {
-	res := []string{}
-	lowered := strings.ToLower(substr)
-	var f func(string, string) bool
-	if onlyPrefix {
-		f = strings.HasPrefix
-	} else {
-		f = strings.Contains
-	}
-	for _, s := range list {
-		// If it's an exact match, don't bother with the rest
-		if strings.ToLower(s) == lowered {
-			return []string{s}
-		}
-		if f(strings.ToLower(s), lowered) {
-			res = append(res, s)
-		}
-	}
-
-	return res
-}
-
-func valid(c *spacetraders.Client, kind spacetraders.CacheKey, bit string) (string, error) {
-	validOpts := c.Restore(kind)
-	matching := filter(validOpts, bit, false)
-	switch len(matching) {
-	case 0:
-		return "", fmt.Errorf("No matching %ss: %v", kind, validOpts)
-	case 1:
-		if bit != matching[0] {
-			cli.Warn("Using %q for %q", matching[0], bit)
-		}
-		return matching[0], nil
-	default:
-		return "", fmt.Errorf("Multiple matching %ss: %v", kind, matching)
-	}
-}
-
-func validate(c *spacetraders.Client, words []string, validators []string) error {
-	if !*useCache || len(words) == 0 {
-		return nil
-	}
-	msgs := []string{}
-	for i, v := range validators {
-		if len(words) < i-1 {
-			return nil
-		}
-		var ck spacetraders.CacheKey
-		switch v {
-		case "mylocation":
-			ck = spacetraders.MYLOCATIONS
-		case "location":
-			ck = spacetraders.LOCATIONS
-		case "system":
-			ck = spacetraders.SYSTEMS
-		case "ship":
-			ck = spacetraders.SHIPS
-		case "flights":
-			ck = spacetraders.FLIGHTS
-		default:
-			continue
-		}
-		match, err := valid(c, ck, words[i])
+// Main input utilities
+func getLine(r *readline.Instance) (string, bool) {
+	for {
+		line, err := r.Readline()
 		if err != nil {
-			msgs = append(msgs, fmt.Sprintf("Invalid %s %q: %v", v, words[i], err))
+			if err == io.EOF {
+				return "", true
+			}
+			cli.ErrMsg("Error while reading input: %v", err)
+			return "", true
+		}
+		if line == "" {
 			continue
 		}
-		words[i] = match
+		if *echo {
+			fmt.Printf("> %s\n", line)
+		}
+		return line, false
 	}
-
-	if len(msgs) > 0 {
-		return fmt.Errorf("validation errors:\n%s", strings.Join(msgs, "\n"))
-	}
-
-	return nil
 }
 
 func main() {

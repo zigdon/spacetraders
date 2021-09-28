@@ -361,7 +361,7 @@ func (f FlightPlan) String() string {
 		arrives = fmt.Sprintf("  Arrived at %s", f.ArrivesAt.Local())
 	}
 	var terminated string
-	if f.TerminatedAt.IsZero() {
+	if !f.TerminatedAt.IsZero() {
 		terminated = fmt.Sprintf("  Terminated: %s (%s ago)", f.TerminatedAt, time.Now().Sub(f.TerminatedAt).Truncate(time.Second))
 	}
 
