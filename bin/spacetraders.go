@@ -51,6 +51,7 @@ func loop(c *spacetraders.Client) {
 
 		cmd, args, err := cli.ParseLine(c, line)
 		if err != nil {
+			cli.ErrMsg(err.Error())
 			continue
 		}
 

@@ -20,9 +20,10 @@ type task struct {
 }
 
 type taskQueue struct {
-	mu    sync.Mutex
-	tasks map[string]*task
-	c     *spacetraders.Client
+	mu       sync.Mutex
+	tasks    map[string]*task
+	c        *spacetraders.Client
+	nextTime time.Time
 }
 
 func init() {
@@ -40,6 +41,10 @@ func (tq *taskQueue) SetClient(c *spacetraders.Client) {
 }
 
 func (tq *taskQueue) ProcessTasks() ([]string, error) {
+	if tq.nextTime.After(time.Now()) {
+		return nil, nil
+	}
+
 	var msgs []string
 	var errs []error
 	var err error
@@ -60,6 +65,8 @@ func (tq *taskQueue) ProcessTasks() ([]string, error) {
 		err = fmt.Errorf("%d errors while processing background tasks: %v", len(errs), errs)
 	}
 
+	tq.findNext()
+
 	return msgs, err
 }
 
@@ -76,4 +83,23 @@ func (tq *taskQueue) Add(key, msg string, f func(*spacetraders.Client) error, wh
 		msg:  msg,
 		f:    f,
 	}
+
+	if when.Before(tq.nextTime) {
+		tq.nextTime = when
+	}
+}
+
+func (tq *taskQueue) findNext() {
+	var next time.Time
+	for _, t := range tq.tasks {
+		if next.IsZero() || t.when.Before(next) {
+			next = t.when
+		}
+	}
+
+	tq.nextTime = next
+}
+
+func (tq *taskQueue) GetNext() time.Time {
+	return tq.nextTime
 }
