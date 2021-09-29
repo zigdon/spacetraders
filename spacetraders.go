@@ -224,7 +224,7 @@ func (c *Client) useAPI(method httpMethod, url string, args map[string]string, o
 	res, err := f(url, args)
 	debug("... %v\n%s", err, res)
 	if err != nil {
-		return fmt.Errorf("error calling %q: %v", url, err)
+		return fmt.Errorf("error calling %q [%+v]: %v", url, args, err)
 	}
 	if err := decodeJSON(res, obj); err != nil {
 		return fmt.Errorf("can't decode json: %v\n%s", err, res)

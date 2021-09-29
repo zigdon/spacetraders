@@ -58,7 +58,8 @@ The cli uses a cache to do argument checking for commands, e.g. `ListShips`
 will only accept known systems as an argument, while `Market` only takes
 locations where you have ships.
 
-This behaviour can be disabled by passing `--nocache` to the cli.
+This behaviour can be disabled by passing `--nocache` to the cli, or `-f` as
+the first argument to a command.
 
 ## Implemented endpoints
 
@@ -68,6 +69,3 @@ grep "// ##ENDPOINT" spacetraders.go | sed 's/.*ENDPOINT //' | sort -t\- -k2 | w
   echo "* $L" >> README.md
   echo "" >> README.md
 done
-
-echo ===================================
-cat README.md

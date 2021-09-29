@@ -138,6 +138,21 @@ func doMyShips(c *spacetraders.Client, args []string) error {
 	return nil
 }
 
+func getShip(c *spacetraders.Client, id string) (*spacetraders.Ship, error) {
+	ships, err := c.MyShips()
+	if err != nil {
+		return nil, fmt.Errorf("can't list ships: %v", err)
+	}
+
+	for _, s := range ships {
+		if s.ID == id || s.ShortID == id {
+			return &s, nil
+		}
+	}
+
+	return nil, fmt.Errorf("can't find ship %q", id)
+}
+
 func doCreateFlight(c *spacetraders.Client, args []string) error {
 	flight, err := c.CreateFlight(args[0], args[1])
 	if err != nil {

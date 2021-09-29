@@ -46,34 +46,63 @@ func init() {
 	}
 }
 
+type commerceType bool
+
+var (
+	commerceBuy  commerceType = false
+	commerceSell commerceType = true
+)
+
 func doBuy(c *spacetraders.Client, args []string) error {
-	qty, err := strconv.Atoi(args[2])
-	if err != nil {
-		return err
-	}
-
-	order, err := c.BuyCargo(args[0], args[1], qty)
-	if err != nil {
-		return fmt.Errorf("error buying goods: %v", err)
-	}
-
-	Out("Bought %d of %s for %d", order.Quantity, order.Good, order.Total)
-
-	return nil
+	return cargoTx(c, args, commerceBuy)
 }
 
 func doSell(c *spacetraders.Client, args []string) error {
+	return cargoTx(c, args, commerceSell)
+}
+
+func cargoTx(c *spacetraders.Client, args []string, kind commerceType) error {
 	qty, err := strconv.Atoi(args[2])
 	if err != nil {
 		return err
 	}
 
-	order, err := c.SellCargo(args[0], args[1], qty)
+	shipName := args[0]
+	ship, err := getShip(c, shipName)
 	if err != nil {
-		return fmt.Errorf("error selling goods: %v", err)
+		return fmt.Errorf("unknown ship %q: %v", shipName, err)
+	}
+	if qty > ship.LoadingSpeed {
+		Warn("%q loading speed is %d, breaking up request...", ship.ShortID, ship.LoadingSpeed)
 	}
 
-	Out("Sold %d of %s for %d", order.Quantity, order.Good, order.Total)
+	var doing, done string
+	var f func(string, string, int) (*spacetraders.Order, error)
+	if kind == commerceBuy {
+		doing = "buying"
+		done = "bought"
+		f = c.BuyCargo
+	} else if kind == commerceSell {
+		doing = "selling"
+		done = "sold"
+		f = c.SellCargo
+	}
+
+	var total, handled int
+	for handled < qty {
+		left := qty - handled
+		if left > ship.LoadingSpeed {
+			left = ship.LoadingSpeed
+		}
+		order, err := f(shipName, args[1], left)
+		if err != nil {
+			return fmt.Errorf("error %s %d goods, only %s %d: %v", doing, left, done, handled, err)
+		}
+		handled += order.Quantity
+		total += order.Total
+	}
+
+	Out("%s %s %d of %s for %d", ship.ShortID, done, handled, args[1], total)
 
 	return nil
 }

@@ -66,15 +66,22 @@ func ParseLine(c *spacetraders.Client, line string) (*cmd, []string, error) {
 	if !ok {
 		log.Fatalf("Command %q not found!", words[0])
 	}
-	if len(words)-1 < cmd.MinArgs || len(words)-1 > cmd.MaxArgs {
-		ErrMsg("Invalid arguments for %q", words[0])
-		words = []string{"help", words[0]}
+	var skipCache bool
+	args := words[1:]
+	if len(args) > 0 && args[0] == "-f" {
+		skipCache = true
+		args = args[1:]
+	}
+	if len(args) < cmd.MinArgs || len(args) > cmd.MaxArgs {
+		ErrMsg("Invalid arguments for %q", cmd.Name)
+		args = []string{cmd.Name}
 		cmd = commands["help"]
 	}
 
-	args := words[1:]
-	if err := validate(c, args, cmd.Validators); err != nil {
-		return nil, nil, fmt.Errorf("Invalid arguments: %v", err)
+	if !skipCache {
+		if err := validate(c, args, cmd.Validators); err != nil {
+			return nil, nil, fmt.Errorf("Invalid arguments: %v", err)
+		}
 	}
 
 	return cmd, args, nil

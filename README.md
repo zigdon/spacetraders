@@ -6,6 +6,7 @@ Includes a cli to execute the API (and potentially play the game):
 
 ```
 $ go run bin/spacetraders.go
+> 
 > help
 - Available commands:
   <arguments> are required, [options] are optional.
@@ -48,16 +49,16 @@ $ go run bin/spacetraders.go
 - Claim: Claim <username> <path/to/file>
   Claims a username, saves token to specified file
 
-> claim test29664 /tmp/test.readme
+> claim test3279 /tmp/test.readme
 
 > account
-- test29664: Credits: 0, Ships: 0, Structures: 0, Joined: 2021-09-28 10:33:13.293 -0700 PDT
+- test3279: Credits: 0, Ships: 0, Structures: 0, Joined: 2021/09/29 - 0 days ago
 
 > availableloans
 - amt: 200000, needs collateral: false, rate: 40, term (days): 2, type: STARTUP
 
 > takeloan STARTUP
-- Loan taken, ln-1 (cku4cysch148557817s6v386asrm), due: 2021-09-30 10:33:15.136 -0700 PDT (in 47h59m59s)
+- Loan taken, ln-1 (cku5qkrb81377941ds6xiu9rgmd), due: 2021-10-01 09:42:01.41 -0700 PDT (in 47h59m59s)
 
 > listships OE MK-I
 - JW-MK-I: Jackshaw MK-I
@@ -77,23 +78,23 @@ $ go run bin/spacetraders.go
     OE-UC-AD: 473600
 
 > buyship OE-PM-TR JW-MK-I
-- New ship ID: s-1 (cku4cyta0148566617s6dd2b07gm)
+- New ship ID: s-1 (cku5qksb91378821ds66cnya0dm)
 
 > myships
 - s-1: Jackshaw MK-I (JW-MK-I)
-  ID: cku4cyta0148566617s6dd2b07gm
+  ID: cku5qksb91378821ds66cnya0dm
   Speed: 1, Max cargo: 50, Available space: 50, Weapons: 5, Plating: 5
   At OE-PM-TR (14, 18)
 
 > buy s-1 FUEL 20
-- Bought 20 of FUEL for 60
+- s-1 bought 20 of FUEL for 60
 
 > buy s-1 METALS 25
-- Bought 25 of METALS for 125
+- s-1 bought 25 of METALS for 100
 
 > myships s-1
 - s-1: Jackshaw MK-I (JW-MK-I)
-  ID: cku4cyta0148566617s6dd2b07gm
+  ID: cku5qksb91378821ds66cnya0dm
   Speed: 1, Max cargo: 50, Available space: 5, Weapons: 5, Plating: 5
   At OE-PM-TR (14, 18)
   Cargo:
@@ -141,24 +142,24 @@ $ go run bin/spacetraders.go
       POST https://api.spacetraders.io/my/warp-jumps shipId=:shipId
 
 > createflightplan s-1 OE-PM
-- Created flight plan: f-1:  OE-PM-TR->OE-PM, ETA: 35s
+- Created flight plan: f-1: s-1 OE-PM-TR->OE-PM, ETA: 35s
 
 > showflightplan f-1
 - f-1: s-1 OE-PM-TR->OE-PM
-    ID: cku4cyvts148588317s6pn7nz48i
-    ShipID: cku4cyta0148566617s6dd2b07gm
-    Arrives at: 2021-09-28 10:33:55.644 -0700 PDT, ETA: 35s
-  
+    ID: cku5qkve11381551ds6tpohmatl
+    ShipID: cku5qksb91378821ds66cnya0dm
+    Arrives at: 2021-09-29 09:42:42.696 -0700 PDT, ETA: 35s
     Fuel consumed: 1, remaining: 19
-    Distance: 2, Terminated: 0001-01-01 00:00:00 +0000 UTC
+    Distance: 2
 
 > wait f-1
-- Waiting 34s for f-1 (cku4cyvts148588317s6pn7nz48i) to arrive...
+- Waiting 34s for f-1 (cku5qkve11381551ds6tpohmatl) to arrive...
 - ... f-1 arrived!
 
 > sell s-1 METALS 25
-- Sold 25 of METALS for 975
+- s-1 sold 25 of METALS for 975
 
+> 
 ```
 
 ### Short IDs
@@ -181,7 +182,8 @@ The cli uses a cache to do argument checking for commands, e.g. `ListShips`
 will only accept known systems as an argument, while `Market` only takes
 locations where you have ships.
 
-This behaviour can be disabled by passing `--nocache` to the cli.
+This behaviour can be disabled by passing `--nocache` to the cli, or `-f` as
+the first argument to a command.
 
 ## Implemented endpoints
 
