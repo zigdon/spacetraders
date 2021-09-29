@@ -556,6 +556,7 @@ func (c *Client) CreateFlight(shipID, destination string) (*FlightPlan, error) {
 	}
 	fp := fpr.FlightPlan
 	fp.ShortID = makeShort(FLIGHTS, fp.ID)
+	fp.ShortShipID = makeShort(SHIPS, fp.ShipID)
 	c.Add(FLIGHTS, fp.ID)
 
 	return &fp, nil

@@ -362,15 +362,15 @@ func (f FlightPlan) String() string {
 	}
 	var terminated string
 	if !f.TerminatedAt.IsZero() {
-		terminated = fmt.Sprintf("  Terminated: %s (%s ago)", f.TerminatedAt, time.Now().Sub(f.TerminatedAt).Truncate(time.Second))
+		terminated = fmt.Sprintf(", Terminated: %s (%s ago)", f.TerminatedAt, time.Now().Sub(f.TerminatedAt).Truncate(time.Second))
 	}
 
 	return strings.Join([]string{
 		fmt.Sprintf("%s: %s %s->%s", f.ShortID, f.ShortShipID, f.Departure, f.Destination),
 		fmt.Sprintf("  ID: %s", f.ID),
 		fmt.Sprintf("  ShipID: %s", f.ShipID),
-		arrives, terminated,
+		arrives,
 		fmt.Sprintf("  Fuel consumed: %d, remaining: %d", f.FuelConsumed, f.FuelRemaining),
-		fmt.Sprintf("  Distance: %d, Terminated: %s", f.Distance, f.TerminatedAt),
+		fmt.Sprintf("  Distance: %d%s", f.Distance, terminated),
 	}, "\n")
 }

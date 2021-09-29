@@ -223,6 +223,7 @@ func doHelp(c *spacetraders.Client, args []string) error {
 func ErrMsg(format string, args ...interface{}) {
 	for _, l := range strings.Split(fmt.Sprintf(format, args...), "\n") {
 		fmt.Printf("! %s\n", l)
+		log.Printf("[err] %s", l)
 	}
 }
 

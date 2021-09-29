@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"path/filepath"
 
 	"github.com/chzyer/readline"
 	"github.com/zigdon/spacetraders"
@@ -16,6 +17,7 @@ var (
 	echo        = flag.Bool("echo", false, "If true, echo commands back to stdout")
 	logFile     = flag.String("logfile", "/tmp/spacetraders.log", "Where should the log file be saved")
 	errorsFatal = flag.Bool("errors_fatal", false, "If false, API errors are caught")
+	historyFile = flag.String("history", filepath.Join(os.Getenv("HOME"), ".spacetraders.history"), "If not empty, save history between sessions")
 )
 
 // Main input loop
@@ -24,8 +26,13 @@ func loop(c *spacetraders.Client) {
 	if err != nil {
 		log.Fatalf("Can't readline: %v", err)
 	}
+	if *historyFile != "" {
+		r.SetHistoryPath(*historyFile)
+		r.HistoryEnable()
+	}
 
 	tq := cli.GetTaskQueue()
+	tq.SetClient(c)
 	for {
 		msgs, err := tq.ProcessTasks()
 		if err != nil {
@@ -37,6 +44,9 @@ func loop(c *spacetraders.Client) {
 		line, stop := getLine(r)
 		if stop {
 			break
+		}
+		if line == "" {
+			continue
 		}
 
 		cmd, args, err := cli.ParseLine(c, line)
@@ -64,9 +74,6 @@ func getLine(r *readline.Instance) (string, bool) {
 			}
 			cli.ErrMsg("Error while reading input: %v", err)
 			return "", true
-		}
-		if line == "" {
-			continue
 		}
 		if *echo {
 			fmt.Printf("> %s\n", line)
