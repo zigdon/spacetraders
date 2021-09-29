@@ -114,8 +114,9 @@ type User struct {
 }
 
 func (u *User) String() string {
-	return fmt.Sprintf("%s: Credits: %d, Ships: %d, Structures: %d, Joined: %s",
-		u.Username, u.Credits, u.ShipCount, u.StructureCount, u.JoinedAt.Local())
+	return fmt.Sprintf("%s: Credits: %d, Ships: %d, Structures: %d, Joined: %s - %0.0f days ago",
+		u.Username, u.Credits, u.ShipCount, u.StructureCount,
+		u.JoinedAt.Local().Format("2006/01/02"), time.Now().Sub(u.JoinedAt).Hours()/24)
 }
 
 type Ship struct {
