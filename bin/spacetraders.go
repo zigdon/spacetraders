@@ -22,13 +22,13 @@ var (
 
 // Main input loop
 func loop(c *spacetraders.Client) {
-	r, err := readline.New("> ")
+	config := &readline.Config{Prompt: "> "}
+	if *historyFile != "" {
+		config.HistoryFile = *historyFile
+	}
+	r, err := readline.NewEx(config)
 	if err != nil {
 		log.Fatalf("Can't readline: %v", err)
-	}
-	if *historyFile != "" {
-		r.SetHistoryPath(*historyFile)
-		r.HistoryEnable()
 	}
 
 	tq := cli.GetTaskQueue()
