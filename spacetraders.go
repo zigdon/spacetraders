@@ -179,36 +179,55 @@ func (c *Client) Cache(key CacheKey) error {
 }
 
 // Low level REST functions
+var calls []time.Time
+
+const (
+	burstCount = 8
+	burstReset = 10
+	callRate   = 2
+)
+
+func rateLimit() {
+	defer func() {
+		calls = append(calls, time.Now())
+	}()
+	if len(calls) == 0 {
+		return
+	}
+	// Remove expired calls
+	for len(calls) > 0 && calls[0].Add(burstReset*time.Second).Before(time.Now()) {
+		calls = calls[1:]
+	}
+
+	// Count how many calls in the last burst, and how many in the last second
+	rate := 0
+	var wait time.Time
+	for _, c := range calls {
+		if c.Add(time.Second).After(time.Now()) {
+			if wait.IsZero() {
+				wait = c
+			}
+			rate++
+		}
+	}
+
+	// If we have no calls in the last second, or we haven't filled the burst yet
+	if wait.IsZero() || len(calls) < burstCount {
+		return
+	}
+	delay := time.Now().Sub(wait)
+	log.Printf("Waiting %s for rate limit", delay.Truncate(time.Millisecond))
+	select {
+	case <-time.After(delay):
+	}
+}
+
 type httpMethod string
 
 const (
 	post httpMethod = "POST"
 	get  httpMethod = "GET"
 )
-
-var calls []time.Time
-
-func rateLimit() {
-	defer func() {
-		calls = append(calls, time.Now())
-	}()
-	var exp time.Time
-	for i, c := range calls {
-		exp = c.Add(time.Second)
-		if exp.After(time.Now()) {
-			calls = calls[i:]
-			break
-		}
-	}
-	wait := exp.Sub(time.Now())
-	if wait < 0 || len(calls) < 2 {
-		return
-	}
-	log.Printf("Waiting %s for rate limit", wait.Truncate(time.Millisecond))
-	select {
-	case <-time.After(wait):
-	}
-}
 
 func (c *Client) useAPI(method httpMethod, url string, args map[string]string, obj interface{}) error {
 	rateLimit()

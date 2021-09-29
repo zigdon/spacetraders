@@ -49,16 +49,16 @@ $ go run bin/spacetraders.go
 - Claim: Claim <username> <path/to/file>
   Claims a username, saves token to specified file
 
-> claim test3279 /tmp/test.readme
+> claim test19806 /tmp/test.readme
 
 > account
-- test3279: Credits: 0, Ships: 0, Structures: 0, Joined: 2021/09/29 - 0 days ago
+- test19806: Credits: 0, Ships: 0, Structures: 0, Joined: 2021/09/29 - 0 days ago
 
 > availableloans
 - amt: 200000, needs collateral: false, rate: 40, term (days): 2, type: STARTUP
 
 > takeloan STARTUP
-- Loan taken, ln-1 (cku5qkrb81377941ds6xiu9rgmd), due: 2021-10-01 09:42:01.41 -0700 PDT (in 47h59m59s)
+- Loan taken, ln-1 (cku5s2hid2262191ds6drflvgo8), due: 2021-10-01 10:23:48.132 -0700 PDT (in 47h59m59s)
 
 > listships OE MK-I
 - JW-MK-I: Jackshaw MK-I
@@ -78,11 +78,11 @@ $ go run bin/spacetraders.go
     OE-UC-AD: 473600
 
 > buyship OE-PM-TR JW-MK-I
-- New ship ID: s-1 (cku5qksb91378821ds66cnya0dm)
+- New ship ID: s-1 (cku5s2i042263071ds6126wlns6)
 
 > myships
 - s-1: Jackshaw MK-I (JW-MK-I)
-  ID: cku5qksb91378821ds66cnya0dm
+  ID: cku5s2i042263071ds6126wlns6
   Speed: 1, Max cargo: 50, Available space: 50, Weapons: 5, Plating: 5
   At OE-PM-TR (14, 18)
 
@@ -94,12 +94,12 @@ $ go run bin/spacetraders.go
 
 > myships s-1
 - s-1: Jackshaw MK-I (JW-MK-I)
-  ID: cku5qksb91378821ds66cnya0dm
+  ID: cku5s2i042263071ds6126wlns6
   Speed: 1, Max cargo: 50, Available space: 5, Weapons: 5, Plating: 5
   At OE-PM-TR (14, 18)
   Cargo:
-    20 of FUEL (20)
     25 of METALS (25)
+    20 of FUEL (20)
 
 > locations oe
 * Using "OE" for "oe"
@@ -146,18 +146,18 @@ $ go run bin/spacetraders.go
 
 > showflightplan f-1
 - f-1: s-1 OE-PM-TR->OE-PM
-    ID: cku5qkve11381551ds6tpohmatl
-    ShipID: cku5qksb91378821ds66cnya0dm
-    Arrives at: 2021-09-29 09:42:42.696 -0700 PDT, ETA: 35s
+    ID: cku5s2lrt2265891ds6xhmrddzx
+    ShipID: cku5s2i042263071ds6126wlns6
+    Arrives at: 2021-09-29 10:24:29.656 -0700 PDT, ETA: 35s
     Fuel consumed: 1, remaining: 19
     Distance: 2
 
 > wait f-1
-- Waiting 34s for f-1 (cku5qkve11381551ds6tpohmatl) to arrive...
+- Waiting 34s for f-1 (cku5s2lrt2265891ds6xhmrddzx) to arrive...
 - ... f-1 arrived!
 
 > sell s-1 METALS 25
-- s-1 sold 25 of METALS for 975
+- s-1 sold 25 of METALS for 1000
 
 > 
 ```
