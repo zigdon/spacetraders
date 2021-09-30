@@ -482,6 +482,7 @@ func (c *Client) ListSystems() ([]System, error) {
 	for _, s := range sr.Systems {
 		systems = append(systems, s.Symbol)
 		for _, l := range s.Locations {
+			l.SystemSymbol = s.Symbol
 			locations = append(locations, l.Symbol)
 		}
 	}
@@ -501,6 +502,10 @@ func (c *Client) ListLocations(system string, kind string) ([]Location, error) {
 
 	if err := c.useAPI(get, fmt.Sprintf("/systems/%s/locations", system), args, lr); err != nil {
 		return nil, err
+	}
+
+	for _, l := range lr.Locations {
+		l.SystemSymbol = system
 	}
 
 	return lr.Locations, nil

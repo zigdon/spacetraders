@@ -187,9 +187,10 @@ func init() {
 
 func doHelp(c *spacetraders.Client, args []string) error {
 	if len(args) > 0 {
-		cmd, ok := commands[args[0]]
+		subj := strings.ToLower(args[0])
+		cmd, ok := commands[subj]
 		if !ok {
-			cmd, ok = commands[aliases[args[0]]]
+			cmd, ok = commands[aliases[subj]]
 		}
 		if ok {
 			a := ""

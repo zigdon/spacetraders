@@ -2,6 +2,7 @@ package spacetraders
 
 import (
 	"fmt"
+	"math"
 	"strings"
 	"time"
 )
@@ -177,7 +178,7 @@ func (s *Ship) String() string {
 	if len(s.Cargo) > 0 {
 		i("Cargo:")
 		for _, c := range s.Cargo {
-			i("  %s", c)
+			i("  %s", c.String())
 		}
 	}
 
@@ -193,7 +194,7 @@ func (s *Ship) Short() string {
 		s.ShortID, s.Manufacturer, s.Class, s.Type, s.FlightPlanID, s.SpaceAvailable)
 }
 
-func (s Ship) Listing() string {
+func (s *Ship) Listing() string {
 	res := []string{}
 	i := func(st string) {
 		res = append(res, st)
@@ -213,7 +214,7 @@ type Cargo struct {
 	TotalVolume int    `json:"totalVolume"`
 }
 
-func (c Cargo) String() string {
+func (c *Cargo) String() string {
 	return fmt.Sprintf("%d of %s (%d)", c.Quantity, c.Good, c.TotalVolume)
 }
 
@@ -245,9 +246,10 @@ func (s System) Details(indent int) string {
 }
 
 type Location struct {
-	Symbol             string      `json:"symbol"`
-	Type               string      `json:"type"`
-	Name               string      `json:"name"`
+	Symbol             string `json:"symbol"`
+	Type               string `json:"type"`
+	Name               string `json:"name"`
+	SystemSymbol       string
 	X                  int         `json:"x"`
 	Y                  int         `json:"y"`
 	AllowsConstruction bool        `json:"allowsConstruction"`
@@ -256,9 +258,9 @@ type Location struct {
 	Messages           []string    `json:"messages,omitempty"`
 }
 
-func (l Location) Short(indent int) string {
+func (l *Location) Short(indent int) string {
 	prefix := strings.Repeat("  ", indent)
-	res := fmt.Sprintf("%s%s: %s (%d, %d)", prefix, l.Name, l.Type, l.X, l.Y)
+	res := fmt.Sprintf("%s%-9s %s: %s (%d, %d)", prefix, l.Symbol, l.Name, l.Type, l.X, l.Y)
 	if len(l.Structures) > 0 {
 		res += fmt.Sprintf(" %d structures", len(l.Structures))
 	}
@@ -268,7 +270,7 @@ func (l Location) Short(indent int) string {
 	return res
 }
 
-func (l Location) Details(indent int) string {
+func (l *Location) Details(indent int) string {
 	prefix := strings.Repeat("  ", indent)
 	var res []string
 	i := func(s string) { res = append(res, fmt.Sprintf("%s%s", prefix, s)) }
@@ -294,6 +296,10 @@ func (l Location) Details(indent int) string {
 		}
 	}
 	return strings.Join(res, "\n")
+}
+
+func (l *Location) Distance(l2 *Location) float64 {
+	return math.Hypot(float64(l.X-l2.X), float64(l.Y-l2.Y))
 }
 
 type Structure struct {
@@ -326,7 +332,7 @@ type Offer struct {
 	QuantityAvailable    int    `json:"quantityAvailable"`
 }
 
-func (o Offer) String() string {
+func (o *Offer) String() string {
 	return fmt.Sprintf("%6d x %-30s Buy: %-6d  Sell: %-6d  Spread: %-4d  Volume per unit: %d",
 		o.QuantityAvailable, o.Symbol, o.PurchasePricePerUnit, o.SellPricePerUnit, o.Spread, o.VolumePerUnit)
 }
@@ -347,13 +353,13 @@ type FlightPlan struct {
 	TimeRemainingInSeconds int       `json:"timeRemainingInSeconds"`
 }
 
-func (f FlightPlan) Short() string {
+func (f *FlightPlan) Short() string {
 	return fmt.Sprintf("%s: %s %s->%s, ETA: %s",
 		f.ShortID, f.ShortShipID, f.Departure, f.Destination,
 		f.ArrivesAt.Sub(time.Now()).Truncate(time.Second))
 }
 
-func (f FlightPlan) String() string {
+func (f *FlightPlan) String() string {
 	var arrives string
 	if f.ArrivesAt.After(time.Now()) {
 		arrives = fmt.Sprintf("  Arrives at: %s, ETA: %s",
