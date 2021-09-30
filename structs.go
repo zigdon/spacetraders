@@ -125,6 +125,7 @@ type Ship struct {
 	Class             string  `json:"class"`
 	FlightPlanID      string  `json:"flightPlanId,omitempty"`
 	ShortFlightPlanID string
+	FlightPlanDest    string
 	ID                string `json:"id"`
 	ShortID           string
 	LocationName      string `json:"location"`
@@ -173,7 +174,7 @@ func (s *Ship) String() string {
 	if s.FlightPlanID == "" {
 		i("At %s (%d, %d)", s.LocationName, s.X, s.Y)
 	} else {
-		i("In flight: %s", s.FlightPlanID)
+		i("In flight: %s to %s", s.ShortFlightPlanID, s.FlightPlanDest)
 	}
 	if len(s.Cargo) > 0 {
 		i("Cargo:")
@@ -190,8 +191,8 @@ func (s *Ship) Short() string {
 		return fmt.Sprintf("%s: %s %s (%s): Loc: %s (%d, %d), Space: %d",
 			s.ShortID, s.Manufacturer, s.Class, s.Type, s.LocationName, s.X, s.Y, s.SpaceAvailable)
 	}
-	return fmt.Sprintf("%s: %s %s (%s): Flight plan: %s, Space: %d",
-		s.ShortID, s.Manufacturer, s.Class, s.Type, s.FlightPlanID, s.SpaceAvailable)
+	return fmt.Sprintf("%s: %s %s (%s): Flight plan: %s to %s, Space: %d",
+		s.ShortID, s.Manufacturer, s.Class, s.Type, s.ShortFlightPlanID, s.FlightPlanDest, s.SpaceAvailable)
 }
 
 func (s *Ship) Listing() string {
@@ -206,6 +207,31 @@ func (s *Ship) Listing() string {
 	}
 
 	return strings.Join(res, "\n")
+}
+
+func (s *Ship) FuelNeeded(src, dest *Location) int {
+	// From https://discord.com/channels/792864705139048469/852291054957887498/852292011024187442
+	dist := math.Hypot(float64(src.X-dest.X), float64(src.Y-dest.Y))
+	var fuel int
+	if s.Type == "HM-MK-III" {
+		fuel = int(math.Round(dist/10) + 1)
+	} else {
+		fuel = int(math.Round(dist/7.5) + 1)
+	}
+	if dest.Type == "PLANET" {
+		switch s.Type {
+		case "HM-MK-III":
+			fuel += 1
+		case "GR-MK-II":
+			fuel += 3
+		case "GR-MK-III":
+			fuel += 4
+		default:
+			fuel += 2
+		}
+	}
+
+	return fuel
 }
 
 type Cargo struct {

@@ -57,7 +57,7 @@ func ParseLine(c *spacetraders.Client, line string) (*cmd, []string, error) {
 	case len(matches) > 1:
 		return nil, nil, fmt.Errorf("%q could mean %v. Try again.", words[0], matches)
 	}
-	if alias, ok := aliases[matches[0]]; ok {
+	if alias, ok := aliases[strings.ToLower(matches[0])]; ok {
 		words[0] = alias
 	} else {
 		words[0] = matches[0]
@@ -66,13 +66,14 @@ func ParseLine(c *spacetraders.Client, line string) (*cmd, []string, error) {
 	if !ok {
 		log.Fatalf("Command %q not found!", words[0])
 	}
+
 	var skipCache bool
 	args := words[1:]
 	if len(args) > 0 && args[0] == "-f" {
 		skipCache = true
 		args = args[1:]
 	}
-	if len(args) < cmd.MinArgs || len(args) > cmd.MaxArgs {
+	if len(args) < cmd.MinArgs || (cmd.MaxArgs != -1 && len(args) > cmd.MaxArgs) {
 		ErrMsg("Invalid arguments for %q", cmd.Name)
 		args = []string{cmd.Name}
 		cmd = commands["help"]
@@ -151,7 +152,12 @@ func validate(c *spacetraders.Client, words []string, validators []string) error
 			ck = spacetraders.SHIPS
 		case "flights":
 			ck = spacetraders.FLIGHTS
+		case "cargo":
+			ck = spacetraders.CARGO
+		case "":
+			continue
 		default:
+			log.Printf("Ignoring unknown validator %q", v)
 			continue
 		}
 		match, err := valid(c, ck, words[i])
@@ -210,7 +216,7 @@ func doHelp(c *spacetraders.Client, args []string) error {
 		"<arguments> are required, [options] are optional.",
 		"",
 	}
-	for _, s := range []string{"", "Account", "Loans", "Ships", "Flight Plans", "Locations", "Goods and Cargo"} {
+	for _, s := range []string{"", "Account", "Loans", "Ships", "Flight Plans", "Locations", "Goods and Cargo", "Automation"} {
 		if s != "" {
 			res = append(res, fmt.Sprintf("  %s:", s))
 		}

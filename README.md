@@ -45,21 +45,27 @@ $ go run bin/spacetraders.go
       Market: Market <location>
       Sell: Sell <shipID> <good> <quantity>
   
+    Automation:
+      AddShipToRoute: AddShipToRoute <route name> <ship id>
+      CreateTradeRoute (NewTrade, NewRoute): CreateTradeRoute <name> <location, cargo>...
+      ProcessRoutes: ProcessRoutes
+      ShowTradeRoute (ShowRoute): ShowTradeRoute [name]
+  
 
 > help claim
 - Claim: Claim <username> <path/to/file>
   Claims a username, saves token to specified file
 
-> claim test7087 /tmp/test.readme
+> claim test31144 /tmp/test.readme
 
 > account
-- test7087: Credits: 0, Ships: 0, Structures: 0, Joined: 2021/09/29 - 0 days ago
+- test31144: Credits: 0, Ships: 0, Structures: 0, Joined: 2021/09/30 - 0 days ago
 
 > availableloans
 - amt: 200000, needs collateral: false, rate: 40, term (days): 2, type: STARTUP
 
 > takeloan STARTUP
-- Loan taken, ln-1 (cku6ffms316384521ds6stkrn6g0), due: 2021-10-01 21:17:52.657 -0700 PDT (in 47h59m59s)
+- Loan taken, ln-1 (cku7gx4r65064361ds68wzx2ung), due: 2021-10-02 14:47:14.897 -0700 PDT (in 47h59m59s)
 
 > listships OE MK-I
 - JW-MK-I: Jackshaw MK-I
@@ -79,11 +85,11 @@ $ go run bin/spacetraders.go
     OE-UC-AD: 473600
 
 > buyship OE-PM-TR JW-MK-I
-- New ship ID: s-1 (cku6ffnch16385401ds6k17fgb0a)
+- New ship ID: s-1 (cku7gx59o5065661ds6i2hx0n4t)
 
 > myships
 - s-1: Jackshaw MK-I (JW-MK-I)
-  ID: cku6ffnch16385401ds6k17fgb0a
+  ID: cku7gx59o5065661ds6i2hx0n4t
   Speed: 1, Max cargo: 50, Available space: 50, Weapons: 5, Plating: 5
   At OE-PM-TR (14, 18)
 
@@ -95,7 +101,7 @@ $ go run bin/spacetraders.go
 
 > myships s-1
 - s-1: Jackshaw MK-I (JW-MK-I)
-  ID: cku6ffnch16385401ds6k17fgb0a
+  ID: cku7gx59o5065661ds6i2hx0n4t
   Speed: 1, Max cargo: 50, Available space: 5, Weapons: 5, Plating: 5
   At OE-PM-TR (14, 18)
   Cargo:
@@ -147,14 +153,14 @@ $ go run bin/spacetraders.go
 
 > showflightplan f-1
 - f-1: s-1 OE-PM-TR->OE-PM
-    ID: cku6ffr3x16388581ds6hxoet22d
-    ShipID: cku6ffnch16385401ds6k17fgb0a
-    Arrives at: 2021-09-29 21:18:34.267 -0700 PDT, ETA: 35s
+    ID: cku7gx9165068391ds68nh09u71
+    ShipID: cku7gx59o5065661ds6i2hx0n4t
+    Arrives at: 2021-09-30 14:47:56.44 -0700 PDT, ETA: 35s
     Fuel consumed: 1, remaining: 19
     Distance: 2
 
 > wait f-1
-- Waiting 34s for f-1 (cku6ffr3x16388581ds6hxoet22d) to arrive...
+- Waiting 34s for f-1 (cku7gx9165068391ds68nh09u71) to arrive...
 - ... f-1 arrived!
 
 > sell s-1 METALS 25

@@ -17,10 +17,11 @@ import (
 var useDebug = flag.Bool("debug", false, "Print out all debug statements")
 
 type Client struct {
-	username string
-	token    string
-	server   string
-	cache    map[CacheKey]*cacheItem
+	username    string
+	token       string
+	server      string
+	cache       map[CacheKey]*cacheItem
+	flightDests map[string]string
 }
 
 // Utils
@@ -43,9 +44,19 @@ func decodeJSON(data string, obj interface{}) error {
 }
 
 func New() *Client {
+	cargos := &cacheItem{
+		expiresOn: time.Now().Add(24 * time.Hour),
+		data:      []string{},
+	}
+	for _, c := range []string{"FUEL", "METALS", "NONE"} {
+		cargos.data = append(cargos.data, c)
+	}
 	return &Client{
 		server: "https://api.spacetraders.io",
-		cache:  make(map[CacheKey]*cacheItem),
+		cache: map[CacheKey]*cacheItem{
+			CARGO: cargos,
+		},
+		flightDests: make(map[string]string),
 	}
 }
 
@@ -74,6 +85,8 @@ const (
 	LOCATIONS   CacheKey = "all locations"
 	SYSTEMS     CacheKey = "systems"
 	FLIGHTS     CacheKey = "flights"
+	FLIGHTDESTS CacheKey = "flight destinations"
+	CARGO       CacheKey = "cargo"
 )
 
 type cacheItem struct {
@@ -101,6 +114,10 @@ func makeShort(key CacheKey, data string) string {
 		prefix = "s"
 	case FLIGHTS:
 		prefix = "f"
+	case CARGO:
+		return strings.ToUpper(data)
+	case FLIGHTDESTS:
+		return data
 	default:
 		log.Printf("Unknown prefix for %s", key)
 		prefix = "X"
@@ -142,6 +159,37 @@ func (c *Client) Add(key CacheKey, data string) {
 	c.cache[key] = newKey
 }
 
+func (c *Client) Extend(key CacheKey, data []string, shorts []string) {
+	sort.Strings(data)
+	sort.Strings(shorts)
+	item, ok := c.cache[key]
+	if !ok {
+		c.Store(key, data, shorts)
+		return
+	}
+
+	var set = make(map[string]bool)
+	for _, v := range append(data, item.data...) {
+		set[strings.ToUpper(v)] = true
+	}
+	item.data = []string{}
+	for v := range set {
+		item.data = append(item.data, v)
+	}
+	sort.Strings(item.data)
+
+	set = make(map[string]bool)
+	for _, v := range append(shorts, item.shorts...) {
+		set[strings.ToUpper(v)] = true
+	}
+	item.shorts = []string{}
+	for v := range set {
+		item.shorts = append(item.shorts, v)
+	}
+	sort.Strings(item.shorts)
+	c.cache[key] = item
+}
+
 func (c *Client) Store(key CacheKey, data []string, shorts []string) {
 	sort.Strings(data)
 	c.cache[key] = &cacheItem{expiresOn: time.Now().Add(time.Hour), data: data, shorts: shorts}
@@ -170,9 +218,11 @@ func (c *Client) Cache(key CacheKey) error {
 	case LOCATIONS, SYSTEMS:
 		_, err := c.ListSystems()
 		return err
-	case MYLOCATIONS, FLIGHTS:
+	case MYLOCATIONS, FLIGHTS, FLIGHTDESTS:
 		_, err := c.MyShips()
 		return err
+	case CARGO:
+		return nil
 	default:
 		return fmt.Errorf("don't know how to cache %q", key)
 	}
@@ -555,9 +605,13 @@ func (c *Client) MyShips() ([]Ship, error) {
 	for i, s := range msr.Ships {
 		ids = append(ids, s.ID)
 		msr.Ships[i].ShortID = makeShort(SHIPS, s.ID)
+		if s.FlightPlanID != "" {
+			msr.Ships[i].ShortFlightPlanID = makeShort(FLIGHTS, s.FlightPlanID)
+			msr.Ships[i].FlightPlanDest = c.getFlightDest(s.FlightPlanID)
+			flights = append(flights, s.FlightPlanID)
+		}
 		shorts = append(shorts, s.ShortID)
 		locs = append(locs, s.LocationName)
-		locs = append(locs, s.FlightPlanID)
 	}
 	c.Store(SHIPS, ids, shorts)
 	c.Store(MYLOCATIONS, locs, nil)
@@ -601,6 +655,20 @@ func (c *Client) ShowFlight(flightID string) (*FlightPlan, error) {
 	return &fp, nil
 }
 
+func (c *Client) getFlightDest(flightID string) string {
+	if d, ok := c.flightDests[flightID]; ok {
+		return d
+	}
+	fp, err := c.ShowFlight(flightID)
+	if err != nil {
+		log.Printf("Error looking up %s: %v", flightID, err)
+		return "Unknown"
+	}
+	c.flightDests[flightID] = fp.Destination
+
+	return fp.Destination
+}
+
 // Goods and Cargo
 // ##ENDPOINT Buy cargo - `/my/purchase-orders`
 func (c *Client) BuyCargo(shipID, good string, qty int) (*Order, error) {
@@ -616,6 +684,9 @@ func (c *Client) BuyCargo(shipID, good string, qty int) (*Order, error) {
 	if err := c.useAPI(post, "/my/purchase-orders", args, br); err != nil {
 		return nil, err
 	}
+
+	// Didn't error, must be real
+	c.Extend(CARGO, []string{good}, nil)
 
 	return &br.Order, nil
 }
@@ -635,6 +706,9 @@ func (c *Client) SellCargo(shipID, good string, qty int) (*Order, error) {
 		return nil, err
 	}
 
+	// Didn't error, must be real
+	c.Extend(CARGO, []string{good}, nil)
+
 	return &sr.Order, nil
 }
 
@@ -645,6 +719,11 @@ func (c *Client) Marketplace(loc string) ([]Offer, error) {
 	if err := c.useAPI(get, fmt.Sprintf("/locations/%s/marketplace", loc), nil, mr); err != nil {
 		return nil, err
 	}
+	cargoType := []string{}
+	for _, o := range mr.Offers {
+		cargoType = append(cargoType, o.Symbol)
+	}
+	c.Extend(CARGO, cargoType, nil)
 
 	return mr.Offers, nil
 }
