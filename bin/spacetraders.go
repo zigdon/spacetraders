@@ -2,15 +2,14 @@ package main
 
 import (
 	"flag"
-	"fmt"
-	"io"
 	"log"
 	"os"
 	"path/filepath"
+	"time"
 
-	"github.com/chzyer/readline"
 	"github.com/zigdon/spacetraders"
 	"github.com/zigdon/spacetraders/cli"
+	"github.com/zigdon/spacetraders/tui"
 )
 
 var (
@@ -22,33 +21,54 @@ var (
 
 // Main input loop
 func loop(c *spacetraders.Client) {
-	config := &readline.Config{Prompt: "> "}
-	if *historyFile != "" {
-		config.HistoryFile = *historyFile
-	}
-	r, err := readline.NewEx(config)
+	t, err := tui.Create()
 	if err != nil {
-		log.Fatalf("Can't readline: %v", err)
+		log.Fatalf("Can't init TUI: %v", err)
 	}
+	defer t.Close()
+	cli.SetTUI(t)
 
+
+
+
+	
+	
+	go func() {
+	  log.Print("TUI goroutine starting...")
+	  if err := t.MainLoop(); err != nil {
+		log.Printf("TUI error: %v", err)
+		t.Quit()
+	  }
+	  log.Print("TUI goroutine ended.")
+	}()
+	
 	tq := cli.GetTaskQueue()
 	tq.SetClient(c)
-	for {
-		msgs, err := tq.ProcessTasks()
-		if err != nil {
-			cli.Warn("Error processing background tasks: %v", err)
-		}
-		for _, m := range msgs {
-			cli.Out(m)
-		}
-		line, stop := getLine(r)
-		if stop {
-			break
-		}
-		if line == "" {
-			continue
-		}
 
+	quitTQ := make(chan(bool))
+	go func(q chan(bool)) {
+	  log.Print("TaskQueue goroutine starting...")
+	  for {
+		select {
+		  case <-time.After(time.Second):
+			msgs, err := tq.ProcessTasks()
+			if err != nil {
+				cli.Warn("Error processing background tasks: %v", err)
+			}
+			for _, m := range msgs {
+				cli.Out(m)
+			}
+		  case <-quitTQ:
+		  log.Print("TaskQueue goroutine ended.")
+		  return
+		}
+	  }
+	}(quitTQ)
+	defer func() { quitTQ <- true }()
+
+	log.Print("Input handling starting...")
+	for line := range t.GetLine() {
+	  log.Printf("Read line: %q", line)
 		cmd, args, err := cli.ParseLine(c, line)
 		if err != nil {
 			cli.ErrMsg(err.Error())
@@ -63,24 +83,7 @@ func loop(c *spacetraders.Client) {
 		}
 		cli.Out("")
 	}
-}
-
-// Main input utilities
-func getLine(r *readline.Instance) (string, bool) {
-	for {
-		line, err := r.Readline()
-		if err != nil {
-			if err == io.EOF {
-				return "", true
-			}
-			cli.ErrMsg("Error while reading input: %v", err)
-			return "", true
-		}
-		if *echo {
-			fmt.Printf("> %s\n", line)
-		}
-		return line, false
-	}
+	log.Print("Input handling ended.")
 }
 
 func main() {

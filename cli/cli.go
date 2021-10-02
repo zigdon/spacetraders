@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/zigdon/spacetraders"
+	"github.com/zigdon/spacetraders/tui"
 )
 
 var (
@@ -30,7 +31,12 @@ var (
 	commands    = map[string]*cmd{}
 	aliases     = map[string]string{}
 	allCommands = []string{}
+	ui *tui.TUI
 )
+
+func SetTUI(t *tui.TUI) {
+  ui = t
+}
 
 func Register(c cmd) error {
 	lower := strings.ToLower
@@ -235,28 +241,14 @@ func doHelp(c *spacetraders.Client, args []string) error {
 }
 
 func ErrMsg(format string, args ...interface{}) {
-	for _, l := range strings.Split(fmt.Sprintf(format, args...), "\n") {
-		fmt.Printf("! %s\n", l)
-		log.Printf("[err] %s", l)
-	}
+  ui.PrintMsg("main", "!", format, args...)
 }
 
 func Warn(format string, args ...interface{}) {
-	for _, l := range strings.Split(fmt.Sprintf(format, args...), "\n") {
-		fmt.Printf("* %s\n", l)
-	}
+  ui.PrintMsg("main", "*", format, args...)
 }
 
 func Out(format string, args ...interface{}) {
-	if format == "" {
-		fmt.Println()
-		return
-	}
-	for i, l := range strings.Split(fmt.Sprintf(format, args...), "\n") {
-		if i == 0 {
-			fmt.Printf("- %s\n", l)
-			continue
-		}
-		fmt.Printf("  %s\n", l)
-	}
+  ui.PrintMsg("main", "-", format, args...)
 }
+
