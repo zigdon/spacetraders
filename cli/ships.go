@@ -164,9 +164,8 @@ func doCreateFlight(c *spacetraders.Client, args []string) error {
 	tasks.GetTaskQueue().Add(
 		flight.ShortID,
 		fmt.Sprintf("%s: %s arrived at %s", flight.ShortID, flight.ShortShipID, flight.Destination),
-		nil,
 		flight.ArrivesAt,
-		0)
+		0, nil)
 
 	return nil
 }

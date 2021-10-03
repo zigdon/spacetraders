@@ -52,11 +52,12 @@ func (tq *taskQueue) ProcessTasks() ([]string, error) {
 	for k, t := range tq.tasks {
 		if t.when.Before(time.Now()) {
 			log.Printf("executing task %q", k)
-			msgs = append(msgs, t.msg)
-			if t.f != nil {
-				if err := t.f(tq.c); err != nil {
-					errs = append(errs, err)
-				}
+			msg, err := tq.Run(k)
+			if msg != "" {
+				msgs = append(msgs, msg)
+			}
+			if err != nil {
+				errs = append(errs, err)
 			}
 			if t.repeat == 0 {
 				delete(tq.tasks, k)
@@ -80,7 +81,22 @@ func (tq *taskQueue) ProcessTasks() ([]string, error) {
 	return msgs, err
 }
 
-func (tq *taskQueue) Add(key, msg string, f func(*spacetraders.Client) error, when time.Time, repeat time.Duration) {
+func (tq *taskQueue) Run(key string) (string, error) {
+	t, ok := tq.tasks[key]
+	if !ok {
+		return "", fmt.Errorf("unknown task %q", key)
+	}
+	msg := t.msg
+	var err error
+	if t.f != nil {
+		err = t.f(tq.c)
+	}
+
+	return msg, err
+
+}
+
+func (tq *taskQueue) Add(key, msg string, when time.Time, repeat time.Duration, f func(*spacetraders.Client) error) {
 	tq.mu.Lock()
 	defer tq.mu.Unlock()
 	log.Printf("Adding task %q at %s (in %s): %q (f: %v)",

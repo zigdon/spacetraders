@@ -88,6 +88,17 @@ func (t *TUI) GetView(name string) *gocui.View {
 	return v
 }
 
+func (t *TUI) Clear(buf string) {
+	t.g.Update(func(g *gocui.Gui) error {
+		output, err := g.View(buf)
+		if err != nil {
+			return fmt.Errorf("can't get view %q: %v", buf, err)
+		}
+		output.Clear()
+		return nil
+	})
+}
+
 func (t *TUI) PrintMsg(buf, prefix, format string, args ...interface{}) {
 	t.g.Update(func(g *gocui.Gui) error {
 		output, err := g.View(buf)
@@ -172,6 +183,15 @@ func (t *TUI) mainView(g *gocui.Gui) error {
 	})
 	if err != nil {
 		return fmt.Errorf("can't create input view: %v", err)
+	}
+
+	if v, err := g.View("input"); err != nil {
+	  return fmt.Errorf("can't get input view: %v", err)
+	} else {
+	  x, _ := v.Cursor()
+	  if x < len(prompt) {
+		v.SetCursor(len(prompt), 0)
+	  }
 	}
 
 	err = nv("sidebar", maxX-30, 3, maxX-1, maxY-4, nil)

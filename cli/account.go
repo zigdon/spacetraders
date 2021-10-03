@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 
 	"github.com/zigdon/spacetraders"
+	"github.com/zigdon/spacetraders/tasks"
 )
 
 func init() {
@@ -57,6 +58,8 @@ func doAccount(c *spacetraders.Client, args []string) error {
 	if err != nil {
 		return err
 	}
+	tasks.GetTaskQueue().Run("updateAccount")
+
 	Out("%s", u)
 	return nil
 }
@@ -69,6 +72,7 @@ func doLogin(c *spacetraders.Client, args []string) error {
 	if err := c.Load(path); err != nil {
 		ErrMsg("Error loading token: %v", err)
 	}
+	tasks.GetTaskQueue().Run("updateAccount")
 
 	return nil
 }
@@ -91,11 +95,13 @@ func doClaim(c *spacetraders.Client, args []string) error {
 		0600); err != nil {
 		return fmt.Errorf("Error writing new token %q to %q: %v", token, path, err)
 	}
+	tasks.GetTaskQueue().Run("updateAccount")
 	log.Printf("Got token %q for %q", token, username)
 
 	return nil
 }
 
 func doLogout(c *spacetraders.Client, args []string) error {
+	tasks.GetTaskQueue().Run("updateAccount")
 	return c.Logout()
 }

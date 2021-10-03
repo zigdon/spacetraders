@@ -62,6 +62,20 @@ func loop(c *spacetraders.Client) {
 	}(quitTQ)
 	defer func() { quitTQ <- true }()
 
+	log.Printf("Queueing account tasks...")
+	tq.Add("updateAccount", "", time.Now(), time.Minute, func(c *spacetraders.Client) error {
+		user, err := c.Account()
+		t.Clear("account")
+		if err != nil {
+			t.PrintMsg("account", " ", "  * Not logged in")
+			log.Printf("Can't display account info: %v", err)
+			return nil
+		}
+		t.PrintMsg("account", " ", "  %s   Credits: %-10d   Ships: %-3d   Structures: %d",
+			user.Username, user.Credits, user.ShipCount, user.StructureCount)
+		return nil
+	})
+
 	log.Print("Input handling starting...")
 	for line := range t.GetLine() {
 		cmd, args, err := cli.ParseLine(c, line)

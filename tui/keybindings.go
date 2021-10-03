@@ -9,20 +9,35 @@ import (
 )
 
 func (t *TUI) keybindings() error {
-	if err := t.g.SetKeybinding("", gocui.KeyCtrlC, gocui.ModNone, quit); err != nil {
-		return err
+	type binding struct {
+		view string
+		key gocui.Key
+		mod gocui.Modifier
+		f func(g *gocui.Gui, v *gocui.View) error
 	}
-	if err := t.g.SetKeybinding("", gocui.KeyEnter, gocui.ModNone, addLine); err != nil {
-		return err
-	}
-	if err := t.g.SetKeybinding("", gocui.KeyArrowDown, gocui.ModNone, scrollDown); err != nil {
-		return err
-	}
-	if err := t.g.SetKeybinding("", gocui.KeyArrowUp, gocui.ModNone, scrollUp); err != nil {
-		return err
+	for _, b := range []binding{
+		{"", gocui.KeyCtrlC, gocui.ModNone, quit},
+		{"", gocui.KeyEnter, gocui.ModNone, addLine},
+		{"", gocui.KeyBackspace, gocui.ModNone, backspace},
+		{"", gocui.KeyBackspace2, gocui.ModNone, backspace},
+		{"", gocui.KeyArrowDown, gocui.ModNone, scrollDown},
+		{"", gocui.KeyArrowUp, gocui.ModNone, scrollUp},
+	} {
+		if err := t.g.SetKeybinding(b.view, b.key, b.mod, b.f); err != nil {
+			return err
+		}
 	}
 
 	return nil
+}
+
+func backspace(g *gocui.Gui, v *gocui.View) error {
+  x, _ := v.Cursor()
+  if x <= len(prompt) {
+	return nil
+  }
+  v.EditDelete(true)
+  return nil
 }
 
 func quit(g *gocui.Gui, v *gocui.View) error {
