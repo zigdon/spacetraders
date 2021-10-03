@@ -74,6 +74,9 @@ func runTQ(c *spacetraders.Client) chan (bool) {
 				for _, m := range msgs {
 					cli.Out(m)
 				}
+				if len(msgs) > 0 {
+					cli.Out("")
+				}
 			case <-quitTQ:
 				log.Print("TaskQueue goroutine ended.")
 				break
@@ -95,14 +98,12 @@ func createViewTasks() {
 			log.Printf("Can't display account info: %v", err)
 			return nil
 		}
-		t.PrintMsg("account", " ", "  %s   Credits: %-10d   Ships: %-3d   Structures: %d",
-			user.Username, user.Credits, user.ShipCount, user.StructureCount)
+		t.SetAccount(user.Short())
 		return nil
 	})
 
 	tq.Add("updateShips", "", time.Now(), time.Minute, func(c *spacetraders.Client) error {
 		ships, err := c.MyShips()
-		t.Clear("sidebar")
 		if err != nil {
 			return nil
 		}
@@ -113,7 +114,6 @@ func createViewTasks() {
 			}
 			t.AddSidebar(s.ShortID, strings.Join(msg, "\n"))
 		}
-		t.PrintMsg("sidebar", " ", strings.Join(t.GetSidebar(), "\n"))
 		return nil
 	})
 }

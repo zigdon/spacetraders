@@ -120,6 +120,11 @@ func (u *User) String() string {
 		u.JoinedAt.Local().Format("2006/01/02"), time.Now().Sub(u.JoinedAt).Hours()/24)
 }
 
+func (u *User) Short() string {
+	return fmt.Sprintf("  %s   Credits: %-10d   Ships: %-3d   Structures: %d",
+		u.Username, u.Credits, u.ShipCount, u.StructureCount)
+}
+
 type Ship struct {
 	Cargo             []Cargo `json:"cargo"`
 	Class             string  `json:"class"`

@@ -44,7 +44,9 @@ type TUI struct {
 	lines     *input
 	inputChan chan (string)
 	quit      bool
+	mu *sync.Mutex
 	sidebar map[string]string
+	account string
 }
 
 func GetUI() *TUI {
@@ -57,13 +59,23 @@ func init() {
 		log.Fatalf("can't create gui: %v", err)
 	}
 
-	t = &TUI{g: g, lines: lines, sidebar: make(map[string]string)}
+	t = &TUI{g: g, lines: lines, mu: &sync.Mutex{}, sidebar: make(map[string]string)}
 	t.g.SetManagerFunc(t.mainView)
 	t.g.Cursor = true
 
 	if err := t.keybindings(); err != nil {
 		log.Fatalf("can't set keybindings: %v", err)
 	}
+
+	// Heartbeat
+	go func() {
+	  for !t.quit {
+		select {
+		  case <- time.After(time.Second):
+		  g.Update(func(_ *gocui.Gui) error {return nil})
+		}
+	  }
+	}()
 }
 
 func (t *TUI) GetLine() <-chan (string) {
@@ -102,19 +114,31 @@ func (t *TUI) Clear(buf string) {
 	})
 }
 
+func (t *TUI) SetAccount(msg string) {
+  t.account = msg
+}
+
 func (t *TUI) ClearSidebar() {
+  t.mu.Lock()
+  defer t.mu.Unlock()
   t.sidebar = make(map[string]string)
 }
 
 func (t *TUI) AddSidebar(key, msg string) {
+  t.mu.Lock()
+  defer t.mu.Unlock()
   t.sidebar[key] = msg
 }
 
 func (t *TUI) DelSidebar(key string) {
+  t.mu.Lock()
+  defer t.mu.Unlock()
   delete(t.sidebar,key)
 }
 
 func (t *TUI) GetSidebar() []string {
+	t.mu.Lock()
+	defer t.mu.Unlock()
 	var keys []string
 	for k := range t.sidebar {
 	  keys = append(keys, k)
@@ -153,7 +177,6 @@ func (t *TUI) PrintMsg(buf, prefix, format string, args ...interface{}) {
 func (t *TUI) Update(f func(*gocui.Gui) error) {
 	t.g.Update(f)
 }
-
 func (t *TUI) Close() {
 	t.g.Close()
 }
@@ -169,16 +192,20 @@ func (t *TUI) MainLoop() error {
 func (t *TUI) mainView(g *gocui.Gui) error {
 	t.g = g
 	maxX, maxY := t.g.Size()
-	nv := func(name string, x0, y0, x1, y1 int, f func(*gocui.View) error) error {
+	nv := func(name string, x0, y0, x1, y1 int,
+			fNew func(*gocui.View) error,
+			fUpdate func(*gocui.View) error) error {
 		if v, err := t.g.SetView(name, x0, y0, x1, y1); err != nil {
 			if err != gocui.ErrUnknownView {
 				return err
 			}
 			v.Frame = true
 			v.Autoscroll = false
-			if f != nil {
-				return f(v)
+			if fNew != nil {
+				return fNew(v)
 			}
+		} else if fUpdate != nil {
+		  return fUpdate(v)
 		}
 		return nil
 	}
@@ -187,12 +214,16 @@ func (t *TUI) mainView(g *gocui.Gui) error {
 	err = nv("main", 0, 3, maxX-51, maxY-4, func(v *gocui.View) error {
 		t.GetView("main").Autoscroll = true
 		return nil
-	})
+	}, nil)
 	if err != nil {
 		return fmt.Errorf("can't create main view: %v", err)
 	}
 
-	err = nv("account", 0, 0, maxX-1, 2, nil)
+	err = nv("account", 0, 0, maxX-1, 2, nil, func(v *gocui.View) error {
+	  v.Clear()
+	  fmt.Fprint(v, t.account)
+	  return nil
+	})
 	if err != nil {
 		return fmt.Errorf("can't create account view: %v", err)
 	}
@@ -207,21 +238,23 @@ func (t *TUI) mainView(g *gocui.Gui) error {
 			return fmt.Errorf("can't focus input: %v", err)
 		}
 		return nil
+	}, func(v *gocui.View) error {
+	  x, _ := v.Cursor()
+	  if x < len(prompt) {
+		v.SetCursor(len(prompt), 0)
+	  }
+	  return nil
 	})
 	if err != nil {
 		return fmt.Errorf("can't create input view: %v", err)
 	}
 
-	if v, err := g.View("input"); err != nil {
-	  return fmt.Errorf("can't get input view: %v", err)
-	} else {
-	  x, _ := v.Cursor()
-	  if x < len(prompt) {
-		v.SetCursor(len(prompt), 0)
-	  }
-	}
-
-	err = nv("sidebar", maxX-50, 3, maxX-1, maxY-4, nil)
+	err = nv("sidebar", maxX-50, 3, maxX-1, maxY-4, nil, func(v *gocui.View) error {
+	  v.Title = time.Now().Format("15:04:05")
+	  v.Clear()
+	  fmt.Fprint(v,  strings.Join(t.GetSidebar(), "\n"))
+	  return nil
+	})
 	if err != nil {
 		return fmt.Errorf("can't create input view: %v", err)
 	}

@@ -106,13 +106,12 @@ func (tq *taskQueue) Run(key string) (string, error) {
 	if !ok {
 		return "", fmt.Errorf("unknown task %q", key)
 	}
-	msg := t.msg
 	var err error
 	if t.f != nil {
 		err = t.f(tq.c)
 	}
 
-	return msg, err
+	return t.msg, err
 }
 
 func (tq *taskQueue) Add(key, msg string, when time.Time, repeat time.Duration, f func(*spacetraders.Client) error) {
