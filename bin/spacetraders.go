@@ -28,37 +28,37 @@ func loop(c *spacetraders.Client) {
 	}
 	defer t.Close()
 	cli.SetTUI(t)
-	
+
 	go func() {
-	  log.Print("TUI goroutine starting...")
+		log.Print("TUI goroutine starting...")
 		if err := t.MainLoop(); err != nil {
-		log.Printf("TUI error: %v", err)
-		t.Quit()
-	  }
-	  log.Print("TUI goroutine ended.")
+			log.Printf("TUI error: %v", err)
+			t.Quit()
+		}
+		log.Print("TUI goroutine ended.")
 	}()
-	
+
 	tq := tasks.GetTaskQueue()
 	tq.SetClient(c)
 
-	quitTQ := make(chan(bool))
-	go func(q chan(bool)) {
-	  log.Print("TaskQueue goroutine starting...")
-	  for {
-		select {
-		  case <-time.After(time.Second):
-			msgs, err := tq.ProcessTasks()
-			if err != nil {
-				cli.Warn("Error processing background tasks: %v", err)
+	quitTQ := make(chan (bool))
+	go func(q chan (bool)) {
+		log.Print("TaskQueue goroutine starting...")
+		for {
+			select {
+			case <-time.After(time.Second):
+				msgs, err := tq.ProcessTasks()
+				if err != nil {
+					cli.Warn("Error processing background tasks: %v", err)
+				}
+				for _, m := range msgs {
+					cli.Out(m)
+				}
+			case <-quitTQ:
+				log.Print("TaskQueue goroutine ended.")
+				break
 			}
-			for _, m := range msgs {
-				cli.Out(m)
-			}
-		  case <-quitTQ:
-		  log.Print("TaskQueue goroutine ended.")
-		  break
 		}
-	  }
 	}(quitTQ)
 	defer func() { quitTQ <- true }()
 
@@ -72,7 +72,7 @@ func loop(c *spacetraders.Client) {
 
 		if err := cmd.Do(c, args); err != nil {
 			if err == cli.ErrExit {
-			  break
+				break
 			}
 			cli.ErrMsg("Error: %v", err)
 			if *errorsFatal {
@@ -81,6 +81,7 @@ func loop(c *spacetraders.Client) {
 		}
 		cli.Out("")
 	}
+	cli.Out("")
 	log.Print("Input handling ended.")
 }
 

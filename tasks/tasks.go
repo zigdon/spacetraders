@@ -14,9 +14,10 @@ var (
 )
 
 type task struct {
-	when time.Time
-	f    func(c *spacetraders.Client) error
-	msg  string
+	when   time.Time
+	repeat time.Duration
+	f      func(c *spacetraders.Client) error
+	msg    string
 }
 
 type taskQueue struct {
@@ -57,7 +58,16 @@ func (tq *taskQueue) ProcessTasks() ([]string, error) {
 					errs = append(errs, err)
 				}
 			}
-			delete(tq.tasks, k)
+			if t.repeat == 0 {
+				delete(tq.tasks, k)
+				continue
+			}
+
+			log.Printf("requeuing task %q in %s", k, t.repeat.Truncate(time.Second))
+			t.when = time.Now().Add(t.repeat)
+			if t.when.Before(tq.nextTime) {
+				tq.nextTime = t.when
+			}
 		}
 	}
 
@@ -70,7 +80,7 @@ func (tq *taskQueue) ProcessTasks() ([]string, error) {
 	return msgs, err
 }
 
-func (tq *taskQueue) Add(key, msg string, f func(*spacetraders.Client) error, when time.Time) {
+func (tq *taskQueue) Add(key, msg string, f func(*spacetraders.Client) error, when time.Time, repeat time.Duration) {
 	tq.mu.Lock()
 	defer tq.mu.Unlock()
 	log.Printf("Adding task %q at %s (in %s): %q (f: %v)",
@@ -79,9 +89,10 @@ func (tq *taskQueue) Add(key, msg string, f func(*spacetraders.Client) error, wh
 		return
 	}
 	tq.tasks[key] = &task{
-		when: when,
-		msg:  msg,
-		f:    f,
+		when:   when,
+		repeat: repeat,
+		msg:    msg,
+		f:      f,
 	}
 
 	if when.Before(tq.nextTime) {

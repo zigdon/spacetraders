@@ -165,7 +165,8 @@ func doCreateFlight(c *spacetraders.Client, args []string) error {
 		flight.ShortID,
 		fmt.Sprintf("%s: %s arrived at %s", flight.ShortID, flight.ShortShipID, flight.Destination),
 		nil,
-		flight.ArrivesAt)
+		flight.ArrivesAt,
+		0)
 
 	return nil
 }

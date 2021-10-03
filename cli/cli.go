@@ -32,11 +32,11 @@ var (
 	commands    = map[string]*cmd{}
 	aliases     = map[string]string{}
 	allCommands = []string{}
-	ui *tui.TUI
+	ui          *tui.TUI
 )
 
 func SetTUI(t *tui.TUI) {
-  ui = t
+	ui = t
 }
 
 func Register(c cmd) error {
@@ -208,9 +208,9 @@ func init() {
 var ErrExit = errors.New("exit")
 
 func doQuit(c *spacetraders.Client, args []string) error {
-  Out("Exiting...")
+	Out("Exiting...")
 
-  return ErrExit
+	return ErrExit
 }
 
 func doHelp(c *spacetraders.Client, args []string) error {
@@ -257,14 +257,21 @@ func doHelp(c *spacetraders.Client, args []string) error {
 }
 
 func ErrMsg(format string, args ...interface{}) {
-  ui.PrintMsg("main", "!", format, args...)
+	ui.PrintMsg("main", "!", format, args...)
 }
 
 func Warn(format string, args ...interface{}) {
-  ui.PrintMsg("main", "*", format, args...)
+	ui.PrintMsg("main", "*", format, args...)
 }
+
+var outputBuffer = []string{}
 
 func Out(format string, args ...interface{}) {
-  ui.PrintMsg("main", "-", format, args...)
-}
+	if format != "" {
+		outputBuffer = append(outputBuffer, fmt.Sprintf(format, args...))
+		return
+	}
 
+	ui.PrintMsg("main", "-", strings.Join(outputBuffer, "\n"))
+	outputBuffer = []string{}
+}
