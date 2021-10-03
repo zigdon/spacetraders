@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"github.com/zigdon/spacetraders"
-	"github.com/zigdon/spacetraders/tui"
 )
 
 var (
@@ -32,10 +31,14 @@ var (
 	commands    = map[string]*cmd{}
 	aliases     = map[string]string{}
 	allCommands = []string{}
-	ui          *tui.TUI
+	ui          UI
 )
 
-func SetTUI(t *tui.TUI) {
+type UI interface {
+	PrintMsg(buf string, prefix string, format string, args ...interface{})
+}
+
+func SetTUI(t UI) {
 	ui = t
 }
 

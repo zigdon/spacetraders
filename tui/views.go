@@ -11,6 +11,7 @@ import (
 )
 
 var prompt = "> "
+var t *TUI
 
 type input struct {
 	mu    *sync.Mutex
@@ -44,23 +45,23 @@ type TUI struct {
 	quit      bool
 }
 
-func Create() (*TUI, error) {
+func GetUI() *TUI {
+  return t
+}
+
+func init() {
 	g, err := gocui.NewGui(gocui.OutputNormal)
 	if err != nil {
-		return nil, fmt.Errorf("can't create gui: %v", err)
+		log.Fatalf("can't create gui: %v", err)
 	}
 
-	log.Printf("Creating TUI")
-	t := &TUI{g: g, lines: lines}
+	t = &TUI{g: g, lines: lines}
 	t.g.SetManagerFunc(t.mainView)
 	t.g.Cursor = true
 
-	log.Printf("Setting keybindings")
 	if err := t.keybindings(); err != nil {
-		return nil, fmt.Errorf("can't set keybindings: %v", err)
+		log.Fatalf("can't set keybindings: %v", err)
 	}
-
-	return t, nil
 }
 
 func (t *TUI) GetLine() <-chan (string) {
@@ -147,7 +148,6 @@ func (t *TUI) mainView(g *gocui.Gui) error {
 				return err
 			}
 			v.Frame = true
-			v.Title = name
 			v.Autoscroll = false
 			if f != nil {
 				return f(v)

@@ -20,15 +20,31 @@ var (
 	historyFile = flag.String("history", filepath.Join(os.Getenv("HOME"), ".spacetraders.history"), "If not empty, save history between sessions")
 )
 
-// Main input loop
 func loop(c *spacetraders.Client) {
-	t, err := tui.Create()
-	if err != nil {
-		log.Fatalf("Can't init TUI: %v", err)
-	}
-	defer t.Close()
-	cli.SetTUI(t)
+	t := tui.GetUI()
+	for line := range t.GetLine() {
+		cmd, args, err := cli.ParseLine(c, line)
+		if err != nil {
+			cli.ErrMsg(err.Error())
+			continue
+		}
 
+		if err := cmd.Do(c, args); err != nil {
+			if err == cli.ErrExit {
+				break
+			}
+			cli.ErrMsg("Error: %v", err)
+			if *errorsFatal {
+				log.Fatal(err)
+			}
+		}
+		cli.Out("")
+	}
+	cli.Out("")
+}
+
+func runUI() {
+	t := tui.GetUI()
 	go func() {
 		log.Print("TUI goroutine starting...")
 		if err := t.MainLoop(); err != nil {
@@ -37,7 +53,9 @@ func loop(c *spacetraders.Client) {
 		}
 		log.Print("TUI goroutine ended.")
 	}()
+}
 
+func runTQ(c *spacetraders.Client) chan (bool) {
 	tq := tasks.GetTaskQueue()
 	tq.SetClient(c)
 
@@ -60,8 +78,12 @@ func loop(c *spacetraders.Client) {
 			}
 		}
 	}(quitTQ)
-	defer func() { quitTQ <- true }()
+	return quitTQ
+}
 
+func createViewTasks() {
+	tq := tasks.GetTaskQueue()
+	t := tui.GetUI()
 	log.Printf("Queueing account tasks...")
 	tq.Add("updateAccount", "", time.Now(), time.Minute, func(c *spacetraders.Client) error {
 		user, err := c.Account()
@@ -75,28 +97,6 @@ func loop(c *spacetraders.Client) {
 			user.Username, user.Credits, user.ShipCount, user.StructureCount)
 		return nil
 	})
-
-	log.Print("Input handling starting...")
-	for line := range t.GetLine() {
-		cmd, args, err := cli.ParseLine(c, line)
-		if err != nil {
-			cli.ErrMsg(err.Error())
-			continue
-		}
-
-		if err := cmd.Do(c, args); err != nil {
-			if err == cli.ErrExit {
-				break
-			}
-			cli.ErrMsg("Error: %v", err)
-			if *errorsFatal {
-				log.Fatal(err)
-			}
-		}
-		cli.Out("")
-	}
-	cli.Out("")
-	log.Print("Input handling ended.")
 }
 
 func main() {
@@ -120,6 +120,14 @@ func main() {
 		}
 	}
 
+	t := tui.GetUI()
+	defer t.Close()
+
+	cli.SetTUI(t)
+	runUI()
+	quitTQ := runTQ(c)
+	createViewTasks()
 	loop(c)
+	quitTQ <- true
 	log.Print("Exiting CLI.\n\n")
 }
