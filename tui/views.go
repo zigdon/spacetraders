@@ -3,6 +3,7 @@ package tui
 import (
 	"fmt"
 	"log"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -43,6 +44,7 @@ type TUI struct {
 	lines     *input
 	inputChan chan (string)
 	quit      bool
+	sidebar map[string]string
 }
 
 func GetUI() *TUI {
@@ -55,7 +57,7 @@ func init() {
 		log.Fatalf("can't create gui: %v", err)
 	}
 
-	t = &TUI{g: g, lines: lines}
+	t = &TUI{g: g, lines: lines, sidebar: make(map[string]string)}
 	t.g.SetManagerFunc(t.mainView)
 	t.g.Cursor = true
 
@@ -98,6 +100,31 @@ func (t *TUI) Clear(buf string) {
 		output.Clear()
 		return nil
 	})
+}
+
+func (t *TUI) ClearSidebar() {
+  t.sidebar = make(map[string]string)
+}
+
+func (t *TUI) AddSidebar(key, msg string) {
+  t.sidebar[key] = msg
+}
+
+func (t *TUI) DelSidebar(key string) {
+  delete(t.sidebar,key)
+}
+
+func (t *TUI) GetSidebar() []string {
+	var keys []string
+	for k := range t.sidebar {
+	  keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	res := []string{}
+	for _, k := range keys {
+	  res = append(res, t.sidebar[k])
+	}
+	return res
 }
 
 func (t *TUI) PrintMsg(buf, prefix, format string, args ...interface{}) {

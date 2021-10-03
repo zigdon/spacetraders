@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/zigdon/spacetraders"
+	"github.com/zigdon/spacetraders/tasks"
 )
 
 func init() {
@@ -72,9 +73,6 @@ func cargoTx(c *spacetraders.Client, args []string, kind commerceType) error {
 	if err != nil {
 		return fmt.Errorf("unknown ship %q: %v", shipName, err)
 	}
-	if qty > ship.LoadingSpeed {
-		Warn("%q loading speed is %d, breaking up request...", ship.ShortID, ship.LoadingSpeed)
-	}
 
 	var doing, done string
 	var f func(string, string, int) (*spacetraders.Order, error)
@@ -103,6 +101,7 @@ func cargoTx(c *spacetraders.Client, args []string, kind commerceType) error {
 	}
 
 	Out("%s %s %d of %s for %d", ship.ShortID, done, handled, args[1], total)
+	tasks.GetTaskQueue().Run("updateShips")
 
 	return nil
 }

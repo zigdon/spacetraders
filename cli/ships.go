@@ -105,6 +105,7 @@ func doBuyShip(c *spacetraders.Client, args []string) error {
 	}
 
 	Out("New ship ID: %s (%s)", ship.ShortID, ship.ID)
+	tasks.Run("updateShips")
 
 	return nil
 }
@@ -136,6 +137,7 @@ func doMyShips(c *spacetraders.Client, args []string) error {
 		}
 	}
 
+	tasks.Run("updateShips")
 	return nil
 }
 
@@ -151,6 +153,7 @@ func getShip(c *spacetraders.Client, id string) (*spacetraders.Ship, error) {
 		}
 	}
 
+	tasks.Run("updateShips")
 	return nil, fmt.Errorf("can't find ship %q", id)
 }
 
@@ -160,12 +163,14 @@ func doCreateFlight(c *spacetraders.Client, args []string) error {
 		return fmt.Errorf("error creating flight plan to %q: %v", args[1], err)
 	}
 
+	tasks.Run("updateShips")
 	Out("Created flight plan: %s", flight.Short())
 	tasks.GetTaskQueue().Add(
 		flight.ShortID,
 		fmt.Sprintf("%s: %s arrived at %s", flight.ShortID, flight.ShortShipID, flight.Destination),
 		flight.ArrivesAt,
 		0, nil)
+	tasks.RunAt("updateShips", flight.ArrivesAt)
 
 	return nil
 }
@@ -176,6 +181,7 @@ func doShowFlight(c *spacetraders.Client, args []string) error {
 		return fmt.Errorf("error listing flight plan %q: %v", args[0], err)
 	}
 
+	tasks.Run("updateShips")
 	Out(flight.String())
 
 	return nil

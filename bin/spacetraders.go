@@ -2,10 +2,11 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
 	"os"
 	"path/filepath"
-	"sort"
+	"strings"
 	"time"
 
 	"github.com/zigdon/spacetraders"
@@ -105,12 +106,14 @@ func createViewTasks() {
 		if err != nil {
 			return nil
 		}
-		sort.Slice(ships, func(i, j int) bool {
-			return ships[i].ShortID < ships[j].ShortID
-		})
 		for _, s := range ships {
-			t.PrintMsg("sidebar", "-", s.Sidebar())
+			msg := []string{s.Sidebar()}
+			for _, g := range s.Cargo {
+				msg = append(msg, fmt.Sprintf("  %d %s", g.Quantity, g.Good))
+			}
+			t.AddSidebar(s.ShortID, strings.Join(msg, "\n"))
 		}
+		t.PrintMsg("sidebar", " ", strings.Join(t.GetSidebar(), "\n"))
 		return nil
 	})
 }

@@ -37,6 +37,14 @@ func GetTaskQueue() *taskQueue {
 	return tq
 }
 
+func Run(key string) (string, error) {
+	return tq.Run(key)
+}
+
+func RunAt(key string, when time.Time) error {
+	return tq.RunAt(key, when)
+}
+
 func (tq *taskQueue) SetClient(c *spacetraders.Client) {
 	tq.c = c
 }
@@ -81,6 +89,18 @@ func (tq *taskQueue) ProcessTasks() ([]string, error) {
 	return msgs, err
 }
 
+func (tq *taskQueue) RunAt(key string, when time.Time) error {
+	t, ok := tq.tasks[key]
+	if !ok {
+		return fmt.Errorf("unknown task %q", key)
+	}
+	if t.when.After(when) {
+		t.when = when
+	}
+
+	return nil
+}
+
 func (tq *taskQueue) Run(key string) (string, error) {
 	t, ok := tq.tasks[key]
 	if !ok {
@@ -93,7 +113,6 @@ func (tq *taskQueue) Run(key string) (string, error) {
 	}
 
 	return msg, err
-
 }
 
 func (tq *taskQueue) Add(key, msg string, when time.Time, repeat time.Duration, f func(*spacetraders.Client) error) {
