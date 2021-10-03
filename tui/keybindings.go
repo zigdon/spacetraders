@@ -59,6 +59,7 @@ func scroll(g *gocui.Gui, offset int) error {
 	if err != nil {
 		return err
 	}
+	v.Autoscroll = false
 	x, y := v.Origin()
 	y += offset
 	if y < 0 {

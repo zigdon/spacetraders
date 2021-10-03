@@ -13,8 +13,8 @@ import (
 var prompt = "> "
 
 type input struct {
-  mu *sync.Mutex
-  lines []string
+	mu    *sync.Mutex
+	lines []string
 }
 
 func (i *input) GetLine() string {
@@ -30,18 +30,18 @@ func (i *input) GetLine() string {
 }
 
 func (i *input) AddLine(line string) {
-  i.mu.Lock()
-  defer i.mu.Unlock()
-  i.lines = append(i.lines, line)
+	i.mu.Lock()
+	defer i.mu.Unlock()
+	i.lines = append(i.lines, line)
 }
 
 var lines *input = &input{mu: &sync.Mutex{}}
 
 type TUI struct {
-	g     *gocui.Gui
-	lines *input
-	inputChan chan(string)
-	quit bool
+	g         *gocui.Gui
+	lines     *input
+	inputChan chan (string)
+	quit      bool
 }
 
 func Create() (*TUI, error) {
@@ -63,48 +63,51 @@ func Create() (*TUI, error) {
 	return t, nil
 }
 
-func (t *TUI) GetLine() <-chan(string) {
-  t.inputChan = make(chan(string))
-  go func() {
-	log.Print("Started GetLine goroutine")
-	for !t.quit {
-	  l := t.lines.GetLine()
-	  if l == "" {
-		time.Sleep(100 * time.Millisecond)
-		continue
-	  }
-	  t.inputChan <- l
-	}
-	close(t.inputChan)
-  }()
-  return t.inputChan
+func (t *TUI) GetLine() <-chan (string) {
+	t.inputChan = make(chan (string))
+	go func() {
+		log.Print("Started GetLine goroutine")
+		for !t.quit {
+			l := t.lines.GetLine()
+			if l == "" {
+				time.Sleep(100 * time.Millisecond)
+				continue
+			}
+			t.inputChan <- l
+		}
+		close(t.inputChan)
+	}()
+	return t.inputChan
 }
 
 func (t *TUI) GetView(name string) *gocui.View {
-  v, err := t.g.View(name)
-  if err != nil {
-	log.Fatalf("Error getting view %q: %v", name, err)
-  }
-  return v
+	v, err := t.g.View(name)
+	if err != nil {
+		log.Fatalf("Error getting view %q: %v", name, err)
+	}
+	return v
 }
 
 func (t *TUI) PrintMsg(buf, prefix, format string, args ...interface{}) {
-	t.g.Update(func (g *gocui.Gui) error {
-	  output, err := g.View(buf)
-	  if err != nil {
-		return fmt.Errorf("can't get view %q: %v", buf, err)
-	  }
-	  if format == "" {
-		  fmt.Fprintln(output)
-		  return nil
-	  }
-	  for i, l := range strings.Split(fmt.Sprintf(format, args...), "\n") {
-		  if i > 0 {
-			prefix = " "
-		  }
-		  fmt.Fprintf(output, "%s %s\n", prefix, l)
-	  }
-	  return nil
+	t.g.Update(func(g *gocui.Gui) error {
+		output, err := g.View(buf)
+		if err != nil {
+			return fmt.Errorf("can't get view %q: %v", buf, err)
+		}
+		if buf == "main" {
+			output.Autoscroll = true
+		}
+		if format == "" {
+			fmt.Fprintln(output)
+			return nil
+		}
+		for i, l := range strings.Split(fmt.Sprintf(format, args...), "\n") {
+			if i > 0 {
+				prefix = " "
+			}
+			fmt.Fprintf(output, "%s %s\n", prefix, l)
+		}
+		return nil
 	})
 }
 
@@ -117,7 +120,7 @@ func (t *TUI) Close() {
 }
 
 func (t *TUI) Quit() {
-  t.quit = true
+	t.quit = true
 }
 
 func (t *TUI) MainLoop() error {
@@ -129,21 +132,24 @@ func (t *TUI) mainView(g *gocui.Gui) error {
 	maxX, maxY := t.g.Size()
 	nv := func(name string, x0, y0, x1, y1 int, f func(*gocui.View) error) error {
 		if v, err := t.g.SetView(name, x0, y0, x1, y1); err != nil {
-		  if err != gocui.ErrUnknownView {
-			  return err
-		  }
-		  v.Frame = true
-		  v.Title = name
-		  v.Autoscroll = false
-		  if f != nil {
-			return f(v)
-		  }
+			if err != gocui.ErrUnknownView {
+				return err
+			}
+			v.Frame = true
+			v.Title = name
+			v.Autoscroll = false
+			if f != nil {
+				return f(v)
+			}
 		}
 		return nil
 	}
 
 	var err error
-	err = nv("main", 0, 3, maxX-31, maxY-4, nil)
+	err = nv("main", 0, 3, maxX-31, maxY-4, func(v *gocui.View) error {
+		t.GetView("main").Autoscroll = true
+		return nil
+	})
 	if err != nil {
 		return fmt.Errorf("can't create main view: %v", err)
 	}
@@ -173,8 +179,5 @@ func (t *TUI) mainView(g *gocui.Gui) error {
 		return fmt.Errorf("can't create input view: %v", err)
 	}
 
-	t.GetView("main").Autoscroll = true
-
 	return nil
 }
-
