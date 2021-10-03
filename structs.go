@@ -195,6 +195,22 @@ func (s *Ship) Short() string {
 		s.ShortID, s.Manufacturer, s.Class, s.Type, s.ShortFlightPlanID, s.FlightPlanDest, s.SpaceAvailable)
 }
 
+func (s *Ship) Sidebar() string {
+	fuel := 0
+	for _, c := range s.Cargo {
+		if c.Good == "FUEL" {
+			fuel = c.Quantity
+			break
+		}
+	}
+	if s.FlightPlanID == "" {
+		return fmt.Sprintf("%s: @%s (fuel: %d avail: %d)",
+			s.ShortID, s.LocationName, fuel, s.SpaceAvailable)
+	}
+	return fmt.Sprintf("%s: -> %s (%s)",
+		s.ShortID, s.FlightPlanDest, s.ShortFlightPlanID)
+}
+
 func (s *Ship) Listing() string {
 	res := []string{}
 	i := func(st string) {

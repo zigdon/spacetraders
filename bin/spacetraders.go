@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"sort"
 	"time"
 
 	"github.com/zigdon/spacetraders"
@@ -84,7 +85,7 @@ func runTQ(c *spacetraders.Client) chan (bool) {
 func createViewTasks() {
 	tq := tasks.GetTaskQueue()
 	t := tui.GetUI()
-	log.Printf("Queueing account tasks...")
+
 	tq.Add("updateAccount", "", time.Now(), time.Minute, func(c *spacetraders.Client) error {
 		user, err := c.Account()
 		t.Clear("account")
@@ -95,6 +96,21 @@ func createViewTasks() {
 		}
 		t.PrintMsg("account", " ", "  %s   Credits: %-10d   Ships: %-3d   Structures: %d",
 			user.Username, user.Credits, user.ShipCount, user.StructureCount)
+		return nil
+	})
+
+	tq.Add("updateShips", "", time.Now(), time.Minute, func(c *spacetraders.Client) error {
+		ships, err := c.MyShips()
+		t.Clear("sidebar")
+		if err != nil {
+			return nil
+		}
+		sort.Slice(ships, func(i, j int) bool {
+			return ships[i].ShortID < ships[j].ShortID
+		})
+		for _, s := range ships {
+			t.PrintMsg("sidebar", "-", s.Sidebar())
+		}
 		return nil
 	})
 }

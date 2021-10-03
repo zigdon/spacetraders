@@ -157,7 +157,7 @@ func (t *TUI) mainView(g *gocui.Gui) error {
 	}
 
 	var err error
-	err = nv("main", 0, 3, maxX-31, maxY-4, func(v *gocui.View) error {
+	err = nv("main", 0, 3, maxX-51, maxY-4, func(v *gocui.View) error {
 		t.GetView("main").Autoscroll = true
 		return nil
 	})
@@ -194,7 +194,7 @@ func (t *TUI) mainView(g *gocui.Gui) error {
 	  }
 	}
 
-	err = nv("sidebar", maxX-30, 3, maxX-1, maxY-4, nil)
+	err = nv("sidebar", maxX-50, 3, maxX-1, maxY-4, nil)
 	if err != nil {
 		return fmt.Errorf("can't create input view: %v", err)
 	}
