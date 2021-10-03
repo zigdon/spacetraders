@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -190,11 +191,26 @@ func init() {
 			Do:      doHelp,
 			MaxArgs: 1,
 		},
+		{
+			Name:    "Quit",
+			Usage:   "Quit",
+			Help:    "Exit game",
+			Do:      doQuit,
+			Aliases: []string{"Exit"},
+		},
 	} {
 		if err := Register(c); err != nil {
 			log.Fatalf("Can't register %q: %v", c.Name, err)
 		}
 	}
+}
+
+var ErrExit = errors.New("exit")
+
+func doQuit(c *spacetraders.Client, args []string) error {
+  Out("Exiting...")
+
+  return ErrExit
 }
 
 func doHelp(c *spacetraders.Client, args []string) error {

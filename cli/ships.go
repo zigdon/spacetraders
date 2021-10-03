@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/zigdon/spacetraders"
+	"github.com/zigdon/spacetraders/tasks"
 )
 
 func init() {
@@ -160,7 +161,7 @@ func doCreateFlight(c *spacetraders.Client, args []string) error {
 	}
 
 	Out("Created flight plan: %s", flight.Short())
-	tq.Add(
+	tasks.GetTaskQueue().Add(
 		flight.ShortID,
 		fmt.Sprintf("%s: %s arrived at %s", flight.ShortID, flight.ShortShipID, flight.Destination),
 		nil,

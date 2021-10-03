@@ -23,7 +23,6 @@ func (i *input) GetLine() string {
 		defer i.mu.Unlock()
 		line := i.lines[0]
 		i.lines = i.lines[1:]
-		log.Printf("lines : %s < %v", line, i.lines)
 		return line
 	}
 
@@ -34,7 +33,6 @@ func (i *input) AddLine(line string) {
   i.mu.Lock()
   defer i.mu.Unlock()
   i.lines = append(i.lines, line)
-  log.Printf("lines: > %v", i.lines)
 }
 
 var lines *input = &input{mu: &sync.Mutex{}}
@@ -75,7 +73,6 @@ func (t *TUI) GetLine() <-chan(string) {
 		time.Sleep(100 * time.Millisecond)
 		continue
 	  }
-	  log.Printf("Pushing %q to chan", l)
 	  t.inputChan <- l
 	}
 	close(t.inputChan)
@@ -125,17 +122,6 @@ func (t *TUI) Quit() {
 
 func (t *TUI) MainLoop() error {
 	return t.g.MainLoop()
-}
-
-func (t *TUI) keybindings() error {
-	if err := t.g.SetKeybinding("", gocui.KeyCtrlC, gocui.ModNone, quit); err != nil {
-		return err
-	}
-	if err := t.g.SetKeybinding("", gocui.KeyEnter, gocui.ModNone, addLine); err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func (t *TUI) mainView(g *gocui.Gui) error {
@@ -192,23 +178,3 @@ func (t *TUI) mainView(g *gocui.Gui) error {
 	return nil
 }
 
-func quit(g *gocui.Gui, v *gocui.View) error {
-	log.Printf("Quitting")
-	return gocui.ErrQuit
-}
-
-func addLine(g *gocui.Gui, v *gocui.View) error {
-  line := v.Buffer()
-  if strings.HasPrefix(line, prompt) {
-	line = line[len(prompt):]
-  }
-  line = strings.TrimSpace(line)
-  if len(line) > 0 {
-	lines.AddLine(strings.TrimSpace(line))
-  }
-  v.Clear()
-  fmt.Fprint(v, prompt)
-  v.SetCursor(len(prompt), 0)
-
-  return nil
-}

@@ -9,6 +9,7 @@ import (
 
 	"github.com/zigdon/spacetraders"
 	"github.com/zigdon/spacetraders/cli"
+	"github.com/zigdon/spacetraders/tasks"
 	"github.com/zigdon/spacetraders/tui"
 )
 
@@ -27,22 +28,17 @@ func loop(c *spacetraders.Client) {
 	}
 	defer t.Close()
 	cli.SetTUI(t)
-
-
-
-
-	
 	
 	go func() {
 	  log.Print("TUI goroutine starting...")
-	  if err := t.MainLoop(); err != nil {
+		if err := t.MainLoop(); err != nil {
 		log.Printf("TUI error: %v", err)
 		t.Quit()
 	  }
 	  log.Print("TUI goroutine ended.")
 	}()
 	
-	tq := cli.GetTaskQueue()
+	tq := tasks.GetTaskQueue()
 	tq.SetClient(c)
 
 	quitTQ := make(chan(bool))
@@ -60,7 +56,7 @@ func loop(c *spacetraders.Client) {
 			}
 		  case <-quitTQ:
 		  log.Print("TaskQueue goroutine ended.")
-		  return
+		  break
 		}
 	  }
 	}(quitTQ)
@@ -68,7 +64,6 @@ func loop(c *spacetraders.Client) {
 
 	log.Print("Input handling starting...")
 	for line := range t.GetLine() {
-	  log.Printf("Read line: %q", line)
 		cmd, args, err := cli.ParseLine(c, line)
 		if err != nil {
 			cli.ErrMsg(err.Error())
@@ -76,10 +71,13 @@ func loop(c *spacetraders.Client) {
 		}
 
 		if err := cmd.Do(c, args); err != nil {
+			if err == cli.ErrExit {
+			  break
+			}
+			cli.ErrMsg("Error: %v", err)
 			if *errorsFatal {
 				log.Fatal(err)
 			}
-			cli.ErrMsg("Error: %v", err)
 		}
 		cli.Out("")
 	}
