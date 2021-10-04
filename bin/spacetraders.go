@@ -2,10 +2,10 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"log"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -89,30 +89,49 @@ func runTQ(c *spacetraders.Client) chan (bool) {
 func createViewTasks() {
 	tq := tasks.GetTaskQueue()
 	t := tui.GetUI()
+	cache := spacetraders.GetCache()
+
+	t.SetView("account", func() string {
+		us := cache.RestoreObjs(spacetraders.USEROBJ)
+		if len(us) == 0 {
+			return ""
+		}
+		u := us[0].(*spacetraders.User)
+		return u.Short()
+	})
 
 	tq.Add("updateAccount", "", time.Now(), time.Minute, func(c *spacetraders.Client) error {
-		user, err := c.Account()
-		t.Clear("account")
+		_, err := c.Account()
 		if err != nil {
-			t.PrintMsg("account", " ", "  * Not logged in")
 			log.Printf("Can't display account info: %v", err)
-			return nil
 		}
-		t.SetAccount(user.Short())
 		return nil
 	})
 
+	t.SetView("sidebar", func() string {
+		msg := []string{}
+		so := cache.RestoreObjs(spacetraders.SHIPOBJ)
+		if len(so) == 0 {
+			return ""
+		}
+		var ships []*spacetraders.Ship
+		for _, s := range so {
+			ships = append(ships, s.(*spacetraders.Ship))
+		}
+		sort.Slice(ships, func(i, j int) bool {
+			return ships[i].ShortID < ships[j].ShortID
+		})
+		for _, s := range ships {
+			msg = append(msg, s.Sidebar())
+		}
+
+		return strings.Join(msg, "\n")
+	})
+
 	tq.Add("updateShips", "", time.Now(), time.Minute, func(c *spacetraders.Client) error {
-		ships, err := c.MyShips()
+		_, err := c.MyShips()
 		if err != nil {
 			return nil
-		}
-		for _, s := range ships {
-			msg := []string{s.Sidebar()}
-			for _, g := range s.Cargo {
-				msg = append(msg, fmt.Sprintf("  %d %s", g.Quantity, g.Good))
-			}
-			t.AddSidebar(s.ShortID, strings.Join(msg, "\n"))
 		}
 		return nil
 	})

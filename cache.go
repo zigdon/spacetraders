@@ -5,9 +5,26 @@ import (
 	"log"
 	"sort"
 	"strings"
-	"sync"
 	"time"
 )
+
+var (
+	shortToID  = make(map[string]string)
+	idToShort  = make(map[string]string)
+	shortIndex = make(map[CacheKey]int)
+)
+
+type Cache struct {
+	data   map[CacheKey]*CacheItem
+	object map[CacheObjKey][]interface{}
+}
+type CacheKey string
+type CacheObjKey string
+type CacheItem struct {
+	expiresOn time.Time
+	data      []string
+	shorts    []string
+}
 
 const (
 	LOANS       CacheKey = "loans"
@@ -18,41 +35,31 @@ const (
 	FLIGHTS     CacheKey = "flights"
 	FLIGHTDESTS CacheKey = "flight destinations"
 	CARGO       CacheKey = "cargo"
+
+	USEROBJ   CacheObjKey = "user"
+	SHIPOBJ   CacheObjKey = "ship"
+	ROUTEOBJ  CacheObjKey = "route"
+	MARKETOBJ CacheObjKey = "market"
 )
 
-var (
-	shortToID  = make(map[string]string)
-	idToShort  = make(map[string]string)
-	shortIndex = make(map[CacheKey]int)
-)
+var c *Cache
 
-type Cache struct {
-	data map[CacheKey]*CacheItem
-}
-type CacheKey string
-type CacheItem struct {
-	expiresOn time.Time
-	data      []string
-	shorts    []string
+func init() {
+	cargos := &CacheItem{
+		expiresOn: time.Now().Add(24 * time.Hour),
+		data:      []string{},
+	}
+	for _, c := range []string{"FUEL", "METALS", "NONE"} {
+		cargos.data = append(cargos.data, c)
+	}
+	c = &Cache{
+		data:   map[CacheKey]*CacheItem{CARGO: cargos},
+		object: make(map[CacheObjKey][]interface{}),
+	}
 }
 
 func GetCache() *Cache {
-	var c *Cache
-	var once sync.Once
-	once.Do(func() {
-		cargos := &CacheItem{
-			expiresOn: time.Now().Add(24 * time.Hour),
-			data:      []string{},
-		}
-		for _, c := range []string{"FUEL", "METALS", "NONE"} {
-			cargos.data = append(cargos.data, c)
-		}
-		c = &Cache{
-			data: map[CacheKey]*CacheItem{CARGO: cargos},
-		}
-	})
 	return c
-
 }
 
 // Add a new value to a key, create a short if needed
@@ -124,6 +131,21 @@ func (c *Cache) Restore(key CacheKey) []string {
 		return append(cached.shorts, cached.data...)
 	}
 	return cached.data
+}
+
+// Clears cached objects
+func (c *Cache) ClearObjs(key CacheObjKey) {
+	delete(c.object, key)
+}
+
+// Store an arbitrary list of objects
+func (c *Cache) StoreObjs(key CacheObjKey, data []interface{}) {
+	c.object[key] = data
+}
+
+// Get an arbitrary list of objects from the cache
+func (c *Cache) RestoreObjs(key CacheObjKey) []interface{} {
+	return c.object[key]
 }
 
 // Create a short name for a given identifier, per type

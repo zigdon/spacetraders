@@ -295,6 +295,7 @@ func (c *Client) Logout() error {
 
 	c.username = ""
 	c.token = ""
+	c.cache.ClearObjs(USEROBJ)
 
 	return nil
 }
@@ -303,10 +304,14 @@ func (c *Client) Logout() error {
 func (c *Client) Account() (*User, error) {
 	ar := &AccountRes{}
 	if err := c.useAPI(get, "/my/account", nil, ar); err != nil {
+		c.cache.ClearObjs(USEROBJ)
 		return nil, err
 	}
 
-	return &ar.User, nil
+	u := &ar.User
+	c.cache.StoreObjs(USEROBJ, []interface{}{u})
+
+	return u, nil
 }
 
 // Loans
@@ -454,6 +459,7 @@ func (c *Client) MyShips() ([]Ship, error) {
 	shorts := []string{}
 	locs := []string{}
 	flights := []string{}
+	var so []interface{}
 	for i, s := range msr.Ships {
 		ids = append(ids, s.ID)
 		msr.Ships[i].ShortID = makeShort(SHIPS, s.ID)
@@ -464,10 +470,12 @@ func (c *Client) MyShips() ([]Ship, error) {
 		}
 		shorts = append(shorts, s.ShortID)
 		locs = append(locs, s.LocationName)
+		so = append(so, &msr.Ships[i])
 	}
 	c.cache.Store(SHIPS, ids, shorts)
 	c.cache.Store(MYLOCATIONS, locs, nil)
 	c.cache.Store(FLIGHTS, flights, nil)
+	c.cache.StoreObjs(SHIPOBJ, so)
 
 	return msr.Ships, nil
 }

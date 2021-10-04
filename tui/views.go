@@ -3,7 +3,6 @@ package tui
 import (
 	"fmt"
 	"log"
-	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -44,9 +43,7 @@ type TUI struct {
 	lines     *input
 	inputChan chan (string)
 	quit      bool
-	mu *sync.Mutex
-	sidebar map[string]string
-	account string
+	viewCache map[string]func()string
 }
 
 func GetUI() *TUI {
@@ -59,7 +56,7 @@ func init() {
 		log.Fatalf("can't create gui: %v", err)
 	}
 
-	t = &TUI{g: g, lines: lines, mu: &sync.Mutex{}, sidebar: make(map[string]string)}
+	t = &TUI{g: g, lines: lines, viewCache: make(map[string]func()string)}
 	t.g.SetManagerFunc(t.mainView)
 	t.g.Cursor = true
 
@@ -114,44 +111,19 @@ func (t *TUI) Clear(buf string) {
 	})
 }
 
-func (t *TUI) SetAccount(msg string) {
-  t.account = msg
+func (t *TUI) SetView(name string, f func()string) {
+  t.viewCache[name] = f
 }
 
-func (t *TUI) ClearSidebar() {
-  t.mu.Lock()
-  defer t.mu.Unlock()
-  t.sidebar = make(map[string]string)
-}
-
-func (t *TUI) AddSidebar(key, msg string) {
-  t.mu.Lock()
-  defer t.mu.Unlock()
-  t.sidebar[key] = msg
-}
-
-func (t *TUI) DelSidebar(key string) {
-  t.mu.Lock()
-  defer t.mu.Unlock()
-  delete(t.sidebar,key)
-}
-
-func (t *TUI) GetSidebar() []string {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-	var keys []string
-	for k := range t.sidebar {
-	  keys = append(keys, k)
-	}
-	sort.Strings(keys)
-	res := []string{}
-	for _, k := range keys {
-	  res = append(res, t.sidebar[k])
-	}
-	return res
+func (t *TUI) UpdateView(name string) string {
+  if f, ok := t.viewCache[name]; ok {
+	return f()
+  }
+  return ""
 }
 
 func (t *TUI) PrintMsg(buf, prefix, format string, args ...interface{}) {
+	msg := fmt.Sprintf(format, args...)
 	t.g.Update(func(g *gocui.Gui) error {
 		output, err := g.View(buf)
 		if err != nil {
@@ -164,7 +136,7 @@ func (t *TUI) PrintMsg(buf, prefix, format string, args ...interface{}) {
 			fmt.Fprintln(output)
 			return nil
 		}
-		for i, l := range strings.Split(fmt.Sprintf(format, args...), "\n") {
+		for i, l := range strings.Split(msg, "\n") {
 			if i > 0 {
 				prefix = " "
 			}
@@ -206,6 +178,15 @@ func (t *TUI) mainView(g *gocui.Gui) error {
 			}
 		} else if fUpdate != nil {
 		  return fUpdate(v)
+		} else {
+		  msg := t.UpdateView(name)
+		  if msg != "" {
+			g.Update(func(*gocui.Gui) error {
+			  v.Clear()
+			  fmt.Fprint(v, msg)
+			  return nil
+			})
+		  }
 		}
 		return nil
 	}
@@ -219,11 +200,7 @@ func (t *TUI) mainView(g *gocui.Gui) error {
 		return fmt.Errorf("can't create main view: %v", err)
 	}
 
-	err = nv("account", 0, 0, maxX-1, 2, nil, func(v *gocui.View) error {
-	  v.Clear()
-	  fmt.Fprint(v, t.account)
-	  return nil
-	})
+	err = nv("account", 0, 0, maxX-1, 2, nil, nil)
 	if err != nil {
 		return fmt.Errorf("can't create account view: %v", err)
 	}
@@ -252,7 +229,7 @@ func (t *TUI) mainView(g *gocui.Gui) error {
 	err = nv("sidebar", maxX-50, 3, maxX-1, maxY-4, nil, func(v *gocui.View) error {
 	  v.Title = time.Now().Format("15:04:05")
 	  v.Clear()
-	  fmt.Fprint(v,  strings.Join(t.GetSidebar(), "\n"))
+	  fmt.Fprint(v, t.UpdateView("sidebar"))
 	  return nil
 	})
 	if err != nil {
