@@ -32,6 +32,7 @@ var (
 	aliases     = map[string]string{}
 	allCommands = []string{}
 	ui          UI
+	cache       *spacetraders.Cache
 )
 
 type UI interface {
@@ -126,7 +127,7 @@ func filter(list []string, substr string, kind filterType) []string {
 }
 
 func valid(c *spacetraders.Client, kind spacetraders.CacheKey, bit string) (string, error) {
-	validOpts := c.Restore(kind)
+	validOpts := cache.Restore(kind)
 	matching := filter(validOpts, bit, filterContains)
 	switch len(matching) {
 	case 0:
@@ -206,6 +207,8 @@ func init() {
 			log.Fatalf("Can't register %q: %v", c.Name, err)
 		}
 	}
+
+	cache = spacetraders.GetCache()
 }
 
 var ErrExit = errors.New("exit")

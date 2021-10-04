@@ -9,7 +9,6 @@ import (
 	"log"
 	"net/http"
 	"net/url"
-	"sort"
 	"strings"
 	"time"
 )
@@ -20,8 +19,8 @@ type Client struct {
 	username    string
 	token       string
 	server      string
-	cache       map[CacheKey]*cacheItem
 	flightDests map[string]string
+	cache       *Cache
 }
 
 // Utils
@@ -44,18 +43,9 @@ func decodeJSON(data string, obj interface{}) error {
 }
 
 func New() *Client {
-	cargos := &cacheItem{
-		expiresOn: time.Now().Add(24 * time.Hour),
-		data:      []string{},
-	}
-	for _, c := range []string{"FUEL", "METALS", "NONE"} {
-		cargos.data = append(cargos.data, c)
-	}
 	return &Client{
 		server: "https://api.spacetraders.io",
-		cache: map[CacheKey]*cacheItem{
-			CARGO: cargos,
-		},
+		cache: GetCache(),
 		flightDests: make(map[string]string),
 	}
 }
@@ -75,145 +65,7 @@ func (c *Client) Load(path string) error {
 	return nil
 }
 
-// Caching
-type CacheKey string
-
-const (
-	LOANS       CacheKey = "loans"
-	SHIPS       CacheKey = "ships"
-	MYLOCATIONS CacheKey = "my locations"
-	LOCATIONS   CacheKey = "all locations"
-	SYSTEMS     CacheKey = "systems"
-	FLIGHTS     CacheKey = "flights"
-	FLIGHTDESTS CacheKey = "flight destinations"
-	CARGO       CacheKey = "cargo"
-)
-
-type cacheItem struct {
-	expiresOn time.Time
-	data      []string
-	shorts    []string
-}
-
-var (
-	shortToID  = make(map[string]string)
-	idToShort  = make(map[string]string)
-	shortIndex = make(map[CacheKey]int)
-)
-
-func makeShort(key CacheKey, data string) string {
-	short, ok := idToShort[data]
-	if ok {
-		return short
-	}
-	var prefix string
-	switch key {
-	case LOANS:
-		prefix = "ln"
-	case SHIPS:
-		prefix = "s"
-	case FLIGHTS:
-		prefix = "f"
-	case CARGO:
-		return strings.ToUpper(data)
-	case FLIGHTDESTS:
-		return data
-	default:
-		log.Printf("Unknown prefix for %s", key)
-		prefix = "X"
-	}
-
-	shortIndex[key]++
-	short = fmt.Sprintf("%s-%d", prefix, shortIndex[key])
-	idToShort[data] = short
-	shortToID[short] = data
-	log.Printf("Created short %q in %q for %q", short, key, data)
-	return short
-}
-
-func makeLong(id string) string {
-	if long, ok := shortToID[id]; ok {
-		return long
-	}
-	return id
-}
-
-func getShorts(key CacheKey, data []string) []string {
-	res := []string{}
-	for _, d := range data {
-		res = append(res, makeShort(key, d))
-	}
-
-	return res
-}
-
-func (c *Client) Add(key CacheKey, data string) {
-	short := makeShort(key, data)
-	if _, ok := c.cache[key]; !ok {
-		c.cache[key] = &cacheItem{}
-	}
-	newKey := c.cache[key]
-	newKey.data = sort.StringSlice(append(c.cache[key].data, data))
-	newKey.shorts = sort.StringSlice(append(c.cache[key].shorts, short))
-	newKey.expiresOn = time.Now().Add(time.Hour)
-	c.cache[key] = newKey
-}
-
-func (c *Client) Extend(key CacheKey, data []string, shorts []string) {
-	sort.Strings(data)
-	sort.Strings(shorts)
-	item, ok := c.cache[key]
-	if !ok {
-		c.Store(key, data, shorts)
-		return
-	}
-
-	var set = make(map[string]bool)
-	for _, v := range append(data, item.data...) {
-		set[strings.ToUpper(v)] = true
-	}
-	item.data = []string{}
-	for v := range set {
-		item.data = append(item.data, v)
-	}
-	sort.Strings(item.data)
-
-	set = make(map[string]bool)
-	for _, v := range append(shorts, item.shorts...) {
-		set[strings.ToUpper(v)] = true
-	}
-	item.shorts = []string{}
-	for v := range set {
-		item.shorts = append(item.shorts, v)
-	}
-	sort.Strings(item.shorts)
-	c.cache[key] = item
-}
-
-func (c *Client) Store(key CacheKey, data []string, shorts []string) {
-	sort.Strings(data)
-	c.cache[key] = &cacheItem{expiresOn: time.Now().Add(time.Hour), data: data, shorts: shorts}
-}
-
-func (c *Client) Restore(key CacheKey) []string {
-	cached, ok := c.cache[key]
-	if !ok || cached.expiresOn.Before(time.Now()) {
-		log.Printf("Cache miss: %q", key)
-		if err := c.Cache(key); err != nil {
-			log.Printf("Error caching %q: %v", key, err)
-			return []string{}
-		}
-		cached = c.cache[key]
-	} else {
-		log.Printf("Cache hit: %q", key)
-	}
-	if cached.shorts != nil {
-		return append(cached.shorts, cached.data...)
-	}
-	return cached.data
-}
-
-func (c *Client) Cache(key CacheKey) error {
+func (c *Client) UpdateCache(key CacheKey) error {
 	switch key {
 	case LOCATIONS, SYSTEMS:
 		_, err := c.ListSystems()
@@ -482,7 +334,7 @@ func (c *Client) TakeLoan(name string) (*Loan, error) {
 		return nil, err
 	}
 	tlr.Loan.ShortID = makeShort(LOANS, tlr.Loan.ID)
-	c.Add(LOANS, tlr.Loan.ID)
+	c.cache.Add(LOANS, tlr.Loan.ID)
 
 	return &tlr.Loan, nil
 }
@@ -502,7 +354,7 @@ func (c *Client) MyLoans() ([]Loan, error) {
 		mlr.Loans[i].ShortID = makeShort(LOANS, l.ID)
 		shorts = append(shorts, l.ID)
 	}
-	c.Store(LOANS, ids, shorts)
+	c.cache.Store(LOANS, ids, shorts)
 
 	return mlr.Loans, nil
 }
@@ -536,8 +388,8 @@ func (c *Client) ListSystems() ([]System, error) {
 			locations = append(locations, l.Symbol)
 		}
 	}
-	c.Store(SYSTEMS, systems, nil)
-	c.Store(LOCATIONS, locations, nil)
+	c.cache.Store(SYSTEMS, systems, nil)
+	c.cache.Store(LOCATIONS, locations, nil)
 
 	return sr.Systems, nil
 }
@@ -585,7 +437,7 @@ func (c *Client) BuyShip(location, kind string) (*Ship, error) {
 		return nil, err
 	}
 	bsr.Ship.ShortID = makeShort(SHIPS, bsr.Ship.ID)
-	c.Add(SHIPS, bsr.Ship.ID)
+	c.cache.Add(SHIPS, bsr.Ship.ID)
 
 	return &bsr.Ship, nil
 }
@@ -613,9 +465,9 @@ func (c *Client) MyShips() ([]Ship, error) {
 		shorts = append(shorts, s.ShortID)
 		locs = append(locs, s.LocationName)
 	}
-	c.Store(SHIPS, ids, shorts)
-	c.Store(MYLOCATIONS, locs, nil)
-	c.Store(FLIGHTS, flights, nil)
+	c.cache.Store(SHIPS, ids, shorts)
+	c.cache.Store(MYLOCATIONS, locs, nil)
+	c.cache.Store(FLIGHTS, flights, nil)
 
 	return msr.Ships, nil
 }
@@ -635,7 +487,7 @@ func (c *Client) CreateFlight(shipID, destination string) (*FlightPlan, error) {
 	fp := fpr.FlightPlan
 	fp.ShortID = makeShort(FLIGHTS, fp.ID)
 	fp.ShortShipID = makeShort(SHIPS, fp.ShipID)
-	c.Add(FLIGHTS, fp.ID)
+	c.cache.Add(FLIGHTS, fp.ID)
 
 	return &fp, nil
 }
@@ -686,7 +538,7 @@ func (c *Client) BuyCargo(shipID, good string, qty int) (*Order, error) {
 	}
 
 	// Didn't error, must be real
-	c.Extend(CARGO, []string{good}, nil)
+	c.cache.Extend(CARGO, []string{good}, nil)
 
 	return &br.Order, nil
 }
@@ -707,7 +559,7 @@ func (c *Client) SellCargo(shipID, good string, qty int) (*Order, error) {
 	}
 
 	// Didn't error, must be real
-	c.Extend(CARGO, []string{good}, nil)
+	c.cache.Extend(CARGO, []string{good}, nil)
 
 	return &sr.Order, nil
 }
@@ -723,7 +575,7 @@ func (c *Client) Marketplace(loc string) ([]Offer, error) {
 	for _, o := range mr.Offers {
 		cargoType = append(cargoType, o.Symbol)
 	}
-	c.Extend(CARGO, cargoType, nil)
+	c.cache.Extend(CARGO, cargoType, nil)
 
 	return mr.Offers, nil
 }
