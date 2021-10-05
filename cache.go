@@ -17,6 +17,7 @@ var (
 type Cache struct {
 	data   map[CacheKey]*CacheItem
 	object map[CacheObjKey][]interface{}
+	update map[CacheKey]func() error
 }
 type CacheKey string
 type CacheObjKey string
@@ -48,6 +49,7 @@ func init() {
 	cargos := &CacheItem{
 		expiresOn: time.Now().Add(24 * time.Hour),
 		data:      []string{},
+		shorts:    []string{},
 	}
 	for _, c := range []string{"FUEL", "METALS", "NONE"} {
 		cargos.data = append(cargos.data, c)
@@ -55,6 +57,7 @@ func init() {
 	c = &Cache{
 		data:   map[CacheKey]*CacheItem{CARGO: cargos},
 		object: make(map[CacheObjKey][]interface{}),
+		update: make(map[CacheKey]func() error),
 	}
 }
 
@@ -62,11 +65,16 @@ func GetCache() *Cache {
 	return c
 }
 
+// Define a new type, and how to update it
+func (c *Cache) RegisterUpdate(key CacheKey, f func() error) {
+	c.update[key] = f
+}
+
 // Add a new value to a key, create a short if needed
 func (c *Cache) Add(key CacheKey, data string) {
 	short := makeShort(key, data)
 	if _, ok := c.data[key]; !ok {
-		c.data[key] = &CacheItem{}
+		c.data[key] = &CacheItem{data: []string{}, shorts: []string{}}
 	}
 	newKey := c.data[key]
 	newKey.data = sort.StringSlice(append(c.data[key].data, data))
@@ -119,7 +127,12 @@ func (c *Cache) Restore(key CacheKey) []string {
 	cached, ok := c.data[key]
 	if !ok || cached.expiresOn.Before(time.Now()) {
 		log.Printf("Cache miss: %q", key)
-		if err := c.data[key]; err != nil {
+		f, ok := c.update[key]
+		if !ok {
+			log.Printf("Don't know how to update cache for %q", key)
+			return []string{}
+		}
+		if err := f(); err != nil {
 			log.Printf("Error caching %q: %v", key, err)
 			return []string{}
 		}

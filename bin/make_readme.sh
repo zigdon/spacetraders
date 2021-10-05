@@ -12,7 +12,7 @@ Includes a cli to execute the API (and potentially play the game):
 ## Sample CLI
 
 ```
-$ go run bin/spacetraders.go
+$ go run example/cli/cli.go
 README
 
 CMDS="
@@ -34,7 +34,7 @@ showflightplan f-1
 wait f-1
 sell s-1 METALS 25
 "
-echo "$CMDS" | go run bin/spacetraders.go --errors_fatal --debug --echo >> README.md
+echo "$CMDS" | go run example/cli/cli.go --errors_fatal --debug --echo >> README.md
 
 echo '```
 

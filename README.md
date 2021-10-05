@@ -5,13 +5,14 @@ Includes a cli to execute the API (and potentially play the game):
 ## Sample CLI
 
 ```
-$ go run bin/spacetraders.go
+$ go run example/cli/cli.go
 > 
 > help
 - Available commands:
   <arguments> are required, [options] are optional.
   
       Help: Help [command]
+      Quit (Exit): Quit
   
     Account:
       Account: Account
@@ -51,95 +52,85 @@ $ go run bin/spacetraders.go
       ProcessRoutes: ProcessRoutes
       ShowTradeRoute (ShowRoute): ShowTradeRoute [name]
   
-
 > help claim
 - Claim: Claim <username> <path/to/file>
   Claims a username, saves token to specified file
+> claim test8894 /tmp/test.readme
 
-> claim test31144 /tmp/test.readme
-
+- 
 > account
-- test31144: Credits: 0, Ships: 0, Structures: 0, Joined: 2021/09/30 - 0 days ago
-
+- test8894: Credits: 0, Ships: 0, Structures: 0, Joined: 2021/10/05 - 0 days ago
 > availableloans
 - amt: 200000, needs collateral: false, rate: 40, term (days): 2, type: STARTUP
-
 > takeloan STARTUP
-- Loan taken, ln-1 (cku7gx4r65064361ds68wzx2ung), due: 2021-10-02 14:47:14.897 -0700 PDT (in 47h59m59s)
-
+- Loan taken, ln-1 (ckueb3en9145506015s6zb1mvkp6), due: 2021-10-07 09:38:33.188 -0700 PDT (in 47h59m59s)
 > listships OE MK-I
 - JW-MK-I: Jackshaw MK-I
   speed: 1, cargo: 50, weapons: 5, plating: 5
     OE-PM-TR: 21125
-- GR-MK-I: Gravager MK-I
+  GR-MK-I: Gravager MK-I
   speed: 1, cargo: 100, weapons: 5, plating: 10
     OE-PM-TR: 42650
-- EM-MK-I: Electrum MK-I
+  EM-MK-I: Electrum MK-I
   speed: 2, cargo: 50, weapons: 10, plating: 5
     OE-PM-TR: 37750
-- HM-MK-I: Hermes MK-I
+  HM-MK-I: Hermes MK-I
   speed: 3, cargo: 50, weapons: 5, plating: 20
     OE-PM-TR: 57525
-- TD-MK-I: Tiddalik MK-I
+  TD-MK-I: Tiddalik MK-I
   speed: 2, cargo: 3000, weapons: 5, plating: 10
     OE-UC-AD: 473600
-
 > buyship OE-PM-TR JW-MK-I
-- New ship ID: s-1 (cku7gx59o5065661ds6i2hx0n4t)
-
+- New ship ID: s-1 (ckueb3f70145514815s6w79qld7x)
 > myships
 - s-1: Jackshaw MK-I (JW-MK-I)
-  ID: cku7gx59o5065661ds6i2hx0n4t
+  ID: ckueb3f70145514815s6w79qld7x
   Speed: 1, Max cargo: 50, Available space: 50, Weapons: 5, Plating: 5
   At OE-PM-TR (14, 18)
-
 > buy s-1 FUEL 20
 - s-1 bought 20 of FUEL for 60
-
 > buy s-1 METALS 25
 - s-1 bought 25 of METALS for 100
-
 > myships s-1
 - s-1: Jackshaw MK-I (JW-MK-I)
-  ID: cku7gx59o5065661ds6i2hx0n4t
+  ID: ckueb3f70145514815s6w79qld7x
   Speed: 1, Max cargo: 50, Available space: 5, Weapons: 5, Plating: 5
   At OE-PM-TR (14, 18)
   Cargo:
     20 of FUEL (20)
     25 of METALS (25)
-
 > locations oe
 * Using "OE" for "oe"
 - 10 locations in "OE":
--   OE-PM: Prime
+    OE-PM: Prime
       Type: PLANET  (13, 16)
       Traits: [METAL_ORES SOME_ARABLE_LAND]
--   OE-PM-TR: Tritus
+    OE-PM-TR: Tritus
       Type: MOON  (14, 18)
       Traits: [METAL_ORES]
--   OE-CR: Carth
+    OE-CR: Carth
       Type: PLANET  (10, 11)
       Traits: [METAL_ORES ARABLE_LAND RARE_METAL_ORES]
--   OE-KO: Koria
+    OE-KO: Koria
       Type: PLANET  (-33, -36)
       Traits: [SOME_METAL_ORES SOME_NATURAL_CHEMICALS]
--   OE-UC: Ucarro
+    OE-UC: Ucarro
       Type: PLANET  (74, -15)
       Traits: [SOME_METAL_ORES NATURAL_CHEMICALS]
--   OE-UC-AD: Ado
+    OE-UC-AD: Ado
       Type: MOON  (76, -14)
       Traits: [TECHNOLOGICAL_RUINS]
--   OE-UC-OB: Obo
+    OE-UC-OB: Obo
       Type: MOON  (77, -16)
       Traits: [NATURAL_CHEMICALS]
--   OE-NY: Nyon
+    OE-NY: Nyon
       Type: ASTEROID  (-58, 24)
       Allows construction.
--   OE-BO: Bo
+    OE-BO: Bo
       Type: GAS_GIANT  (-60, -58)
       Allows construction.
       Traits: [SOME_HELIUM_3]
--   OE-W-XV: Wormhole
+    OE-W-XV: Wormhole
       Type: WORMHOLE  (87, 55)
       Extensive research has revealed a partially functioning warp gate harnessing the power of an unstable but traversable wormhole.
       The scientific community has determined a means of stabilizing the ancient structure.
@@ -147,25 +138,20 @@ $ go run bin/spacetraders.go
       GET https://api.spacetraders.io/locations/OE-W-XV/structures
       POST https://api.spacetraders.io/structures/:structureId/deposit shipId=:shipId good=:goodSymbol quantity=:quantity
       POST https://api.spacetraders.io/my/warp-jumps shipId=:shipId
-
 > createflightplan s-1 OE-PM
 - Created flight plan: f-1: s-1 OE-PM-TR->OE-PM, ETA: 35s
-
 > showflightplan f-1
 - f-1: s-1 OE-PM-TR->OE-PM
-    ID: cku7gx9165068391ds68nh09u71
-    ShipID: cku7gx59o5065661ds6i2hx0n4t
-    Arrives at: 2021-09-30 14:47:56.44 -0700 PDT, ETA: 35s
+    ID: ckueb3iyl145541315s6qdb1zegg
+    ShipID: ckueb3f70145514815s6w79qld7x
+    Arrives at: 2021-10-05 09:39:14.78 -0700 PDT, ETA: 35s
     Fuel consumed: 1, remaining: 19
     Distance: 2
-
 > wait f-1
-- Waiting 34s for f-1 (cku7gx9165068391ds68nh09u71) to arrive...
-- ... f-1 arrived!
-
+- Waiting 34s for f-1 (ckueb3iyl145541315s6qdb1zegg) to arrive...
+  ... f-1 arrived!
 > sell s-1 METALS 25
-- s-1 sold 25 of METALS for 1000
-
+- s-1 sold 25 of METALS for 975
 > 
 ```
 

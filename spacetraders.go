@@ -43,11 +43,27 @@ func decodeJSON(data string, obj interface{}) error {
 }
 
 func New() *Client {
-	return &Client{
+	ca := GetCache()
+	c := &Client{
 		server: "https://api.spacetraders.io",
-		cache: GetCache(),
+		cache: ca,
 		flightDests: make(map[string]string),
 	}
+	for _, k := range []CacheKey{LOCATIONS, SYSTEMS} {
+		ca.RegisterUpdate(k, func () error {
+		  _, err := c.ListSystems()
+		  return err
+		})
+	}
+	for _, k := range []CacheKey{MYLOCATIONS, FLIGHTS, FLIGHTDESTS} {
+		ca.RegisterUpdate(k, func () error {
+		  _, err := c.MyShips()
+		  return err
+		})
+	}
+	ca.RegisterUpdate(CARGO, func() error{ return nil })
+
+	return c
 }
 
 func (c *Client) Load(path string) error {
@@ -63,21 +79,6 @@ func (c *Client) Load(path string) error {
 	c.token = strings.TrimSpace(lines[1])
 
 	return nil
-}
-
-func (c *Client) UpdateCache(key CacheKey) error {
-	switch key {
-	case LOCATIONS, SYSTEMS:
-		_, err := c.ListSystems()
-		return err
-	case MYLOCATIONS, FLIGHTS, FLIGHTDESTS:
-		_, err := c.MyShips()
-		return err
-	case CARGO:
-		return nil
-	default:
-		return fmt.Errorf("don't know how to cache %q", key)
-	}
 }
 
 // Low level REST functions

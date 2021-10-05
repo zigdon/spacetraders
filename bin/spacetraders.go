@@ -4,7 +4,6 @@ import (
 	"flag"
 	"log"
 	"os"
-	"path/filepath"
 	"sort"
 	"strings"
 	"time"
@@ -19,7 +18,6 @@ var (
 	echo        = flag.Bool("echo", false, "If true, echo commands back to stdout")
 	logFile     = flag.String("logfile", "/tmp/spacetraders.log", "Where should the log file be saved")
 	errorsFatal = flag.Bool("errors_fatal", false, "If false, API errors are caught")
-	historyFile = flag.String("history", filepath.Join(os.Getenv("HOME"), ".spacetraders.history"), "If not empty, save history between sessions")
 )
 
 func loop(c *spacetraders.Client) {
