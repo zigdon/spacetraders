@@ -193,7 +193,8 @@ func (t *TUI) mainView(g *gocui.Gui) error {
 
 	var err error
 	err = nv("main", 0, 3, maxX-51, maxY-4, func(v *gocui.View) error {
-		t.GetView("main").Autoscroll = true
+		v.Autoscroll = true
+		v.Wrap = true
 		return nil
 	}, nil)
 	if err != nil {

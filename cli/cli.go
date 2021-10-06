@@ -1,9 +1,11 @@
 package cli
 
 import (
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"sort"
 	"strings"
@@ -33,6 +35,8 @@ var (
 	allCommands = []string{}
 	ui          UI
 	cache       *spacetraders.Cache
+	saveFuncs   = make(map[string]func() string)
+	loadFuncs   = make(map[string]func(string) error)
 )
 
 type UI interface {
@@ -41,6 +45,58 @@ type UI interface {
 
 func SetTUI(t UI) {
 	ui = t
+}
+
+func RegisterPersistence(key string, save func() string, load func(string) error) error {
+	if _, ok := saveFuncs[key]; ok {
+		return fmt.Errorf("already have persistence functions registered for %q", key)
+	}
+	saveFuncs[key] = save
+	loadFuncs[key] = load
+	return nil
+}
+
+func Load(path string) error {
+	out := make(map[string]string)
+	data, err := ioutil.ReadFile(path)
+	if err != nil {
+		return fmt.Errorf("error saving data to %q: %v", path, err)
+	}
+
+	err = json.Unmarshal(data, &out)
+	if err != nil {
+		return fmt.Errorf("error unmarshaling save: %v", err)
+	}
+	for k, f := range loadFuncs {
+		d, ok := out[k]
+		if !ok || len(d) <= 3 {
+			log.Printf("No save data found for %q, skipping", k)
+			continue
+		}
+		if err := f(d); err != nil {
+			return fmt.Errorf("error loading data for %q: %v\n%q", k, err, d)
+		}
+	}
+
+	return nil
+}
+
+func Save(path string) error {
+	out := make(map[string]string)
+	for k, f := range saveFuncs {
+		out[k] = f()
+	}
+
+	data, err := json.Marshal(out)
+	if err != nil {
+		return fmt.Errorf("can't marshal save: %v\n%+v", err, out)
+	}
+	err = ioutil.WriteFile(path, data, 0644)
+	if err != nil {
+		return fmt.Errorf("error saving data to %q: %v", path, err)
+	}
+
+	return nil
 }
 
 func Register(c cmd) error {
@@ -202,6 +258,20 @@ func init() {
 			Do:      doQuit,
 			Aliases: []string{"Exit"},
 		},
+		{
+			Name:    "Save",
+			Usage:   "Save [filename]",
+			Help:    "Save client state to file. If not specified, save to spacetraders.save",
+			Do:      doSave,
+			MaxArgs: 1,
+		},
+		{
+			Name:    "Load",
+			Usage:   "Load [filename]",
+			Help:    "Load client state from file. If not specified, load from spacetraders.save",
+			Do:      doLoad,
+			MaxArgs: 1,
+		},
 	} {
 		if err := Register(c); err != nil {
 			log.Fatalf("Can't register %q: %v", c.Name, err)
@@ -217,6 +287,27 @@ func doQuit(c *spacetraders.Client, args []string) error {
 	Out("Exiting...")
 
 	return ErrExit
+}
+
+func doSave(c *spacetraders.Client, args []string) error {
+	path := "spacetraders.save"
+	if len(args) > 0 {
+		path = args[0]
+	}
+
+	Out("Saving to %q...", path)
+
+	return Save(path)
+}
+
+func doLoad(c *spacetraders.Client, args []string) error {
+	path := "spacetraders.save"
+	if len(args) > 0 {
+		path = args[0]
+	}
+
+	Out("Loading from %q...", path)
+	return Load(path)
 }
 
 func doHelp(c *spacetraders.Client, args []string) error {
