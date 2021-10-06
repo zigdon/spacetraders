@@ -284,6 +284,9 @@ func init() {
 var ErrExit = errors.New("exit")
 
 func doQuit(c *spacetraders.Client, args []string) error {
+	if err := doSave(c, args); err != nil {
+		return fmt.Errorf("failed to autosave: %v", err)
+	}
 	Out("Exiting...")
 
 	return ErrExit

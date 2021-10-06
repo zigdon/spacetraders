@@ -18,6 +18,7 @@ var (
 	echo        = flag.Bool("echo", false, "If true, echo commands back to stdout")
 	logFile     = flag.String("logfile", "/tmp/spacetraders.log", "Where should the log file be saved")
 	errorsFatal = flag.Bool("errors_fatal", false, "If false, API errors are caught")
+	saveFile    = flag.String("savefile", "spacetraders.save", "What is the file to use as the default save")
 )
 
 func loop(c *spacetraders.Client) {
@@ -135,6 +136,30 @@ func createViewTasks() {
 	})
 }
 
+func autoLoad() {
+	if *saveFile == "" {
+		return
+	}
+
+	if _, err := os.Stat(*saveFile); os.IsNotExist(err) {
+		log.Printf("No autosave %q found, skipping", *saveFile)
+		return
+	}
+
+	if err := cli.Load(*saveFile); err != nil {
+		log.Fatalf("Failed to autoload %q: %v", *saveFile, err)
+	}
+}
+func autoSave() {
+	if *saveFile == "" {
+		return
+	}
+
+	if err := cli.Save(*saveFile); err != nil {
+		log.Fatalf("Failed to autosave %q: %v", *saveFile, err)
+	}
+}
+
 func main() {
 	flag.Parse()
 	f, err := os.OpenFile(*logFile, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
@@ -163,7 +188,9 @@ func main() {
 	runUI()
 	quitTQ := runTQ(c)
 	createViewTasks()
+	autoLoad()
 	loop(c)
 	quitTQ <- true
 	log.Print("Exiting CLI.\n\n")
+	autoSave()
 }
