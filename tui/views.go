@@ -101,18 +101,20 @@ func (t *TUI) mainView(g *gocui.Gui) error {
 	}
 
 	/////// messages
-	startM := maxY-39
+	startM := maxY - 39
 	if !t.windows["sidebar"] {
-	  startM = 3
+		startM = 3
 	}
-	err = createView(g, "msgs", maxX-50, startM, maxX-1, maxY-4, nil, func(v *gocui.View) error {
+	err = createView(g, "msgs", maxX-50, startM, maxX-1, maxY-4, func(v *gocui.View) error {
+		v.Autoscroll = true
+		v.Wrap = true
+		return nil
+	}, func(v *gocui.View) error {
 		if t.windows["msgs"] {
 			g.SetViewOnTop("msgs")
 		} else {
 			g.SetViewOnBottom("msgs")
 		}
-		v.Clear()
-		fmt.Fprint(v, t.UpdateView("msgs"))
 		return nil
 	})
 	if err != nil {

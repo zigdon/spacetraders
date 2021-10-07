@@ -44,15 +44,6 @@ func init() {
 			MinArgs:    2,
 			MaxArgs:    2,
 		},
-		{
-			Section: "Automation",
-			Name:    "ProcessRoutes",
-			Usage:   "ProcessRoutes",
-			Help:    "Manually trigger routes processing, for debugging only.",
-			Do:      doProcessRoutes,
-			MinArgs: 0,
-			MaxArgs: 0,
-		},
 	} {
 		if err := Register(c); err != nil {
 			log.Fatalf("Can't register %q: %v", c.Name, err)
@@ -196,9 +187,8 @@ func doAddShipToRoute(c *spacetraders.Client, args []string) error {
 	return nil
 }
 
-func doProcessRoutes(c *spacetraders.Client, args []string) error {
+func ProcessRoutes(c *spacetraders.Client) error {
 	for k, r := range routes {
-		Out("Running tasks for route %s...", k)
 		if err := r.HandlePending(c); err != nil {
 			return fmt.Errorf("error handling route %s: %v", k, err)
 		}
@@ -208,10 +198,11 @@ func doProcessRoutes(c *spacetraders.Client, args []string) error {
 }
 
 func (r *route) Log(format string, args ...interface{}) {
-	ui.Msg(format, args...)
-	r.LogEntries = append(r.LogEntries, fmt.Sprintf(format, args...))
-	if len(r.LogEntries) > 50 {
-		purge := len(r.LogEntries) - 50
+	msg := fmt.Sprintf(format, args...)
+	ui.Msg("%s: %s", r.Name, msg)
+	r.LogEntries = append(r.LogEntries, msg)
+	if len(r.LogEntries) > 10 {
+		purge := len(r.LogEntries) - 10
 		r.LogEntries = r.LogEntries[purge:]
 	}
 }

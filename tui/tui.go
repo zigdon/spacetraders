@@ -69,7 +69,6 @@ func init() {
 			"msgs":    true,
 		},
 		initLogs: []string{},
-		msgs:     []string{},
 	}
 	t.g.SetManagerFunc(t.mainView)
 	t.g.Cursor = true
@@ -99,19 +98,7 @@ func (t *TUI) GetInitLogs() []string {
 }
 
 func (t *TUI) Msg(format string, args ...interface{}) {
-	t.msgs = append(t.msgs, fmt.Sprintf(format, args...))
-	v, err := t.g.View("msgs")
-	if err != nil {
-		return
-	}
-	_, y := v.Size()
-	if len(t.msgs) > y-1 {
-		t.msgs = t.msgs[:y-1]
-	}
-}
-
-func (t *TUI) GetMsgs() []string {
-	return t.msgs
+	t.PrintMsg("msgs", "-", format, args...)
 }
 
 func (t *TUI) GetLine() <-chan (string) {
@@ -176,6 +163,7 @@ func (t *TUI) PrintMsg(buf, prefix, format string, args ...interface{}) {
 	t.g.Update(func(g *gocui.Gui) error {
 		output, err := g.View(buf)
 		if err != nil {
+			log.Printf("can't get view %q: %v", buf, err)
 			return fmt.Errorf("can't get view %q: %v", buf, err)
 		}
 		if buf == "main" {

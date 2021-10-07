@@ -85,7 +85,7 @@ func runTQ(c *spacetraders.Client) chan (bool) {
 	return quitTQ
 }
 
-func createViewTasks() {
+func createTasks() {
 	tq := tasks.GetTaskQueue()
 	t := tui.GetUI()
 	cache := spacetraders.GetCache()
@@ -127,16 +127,16 @@ func createViewTasks() {
 		return strings.Join(msg, "\n")
 	})
 
-	t.SetView("msgs", func() string {
-		return strings.Join(t.GetMsgs(), "\n")
-	})
-
 	tq.Add("updateShips", "", time.Now(), time.Minute, func(c *spacetraders.Client) error {
 		_, err := c.MyShips()
 		if err != nil {
 			return nil
 		}
 		return nil
+	})
+
+	tq.Add("processRoutes", "", time.Now().Add(10*time.Second), 20*time.Second, func(c *spacetraders.Client) error {
+	  return cli.ProcessRoutes(c)
 	})
 }
 
@@ -195,7 +195,7 @@ func main() {
 	cli.SetTUI(t)
 	runUI()
 	quitTQ := runTQ(c)
-	createViewTasks()
+	createTasks()
 	autoLoad()
 	loop(c)
 	quitTQ <- true
