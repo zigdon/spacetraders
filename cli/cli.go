@@ -184,19 +184,18 @@ func filter(list []string, substr string, kind filterType) []string {
 	return res
 }
 
-func valid(c *spacetraders.Client, kind spacetraders.CacheKey, bit string) (string, error) {
-	validOpts := cache.Restore(kind)
-	matching := filter(validOpts, bit, filterContains)
+func valid(validOpts []string, bit string, ft filterType) (string, error) {
+	matching := filter(validOpts, bit, ft)
 	switch len(matching) {
 	case 0:
-		return "", fmt.Errorf("No matching %ss: %v", kind, validOpts)
+		return "", fmt.Errorf("Invalid value %q: %v", bit, validOpts)
 	case 1:
 		if bit != matching[0] {
 			Warn("Using %q for %q", matching[0], bit)
 		}
 		return matching[0], nil
 	default:
-		return "", fmt.Errorf("Multiple matching %ss: %v", kind, matching)
+		return "", fmt.Errorf("%q can mean multiple values: %v", bit, matching)
 	}
 }
 
@@ -210,6 +209,8 @@ func validate(c *spacetraders.Client, words []string, validators []string) error
 			return nil
 		}
 		var ck spacetraders.CacheKey
+		var ft filterType = filterContains
+		validOpts := []string{}
 		switch v {
 		case "mylocation":
 			ck = spacetraders.MYLOCATIONS
@@ -223,13 +224,19 @@ func validate(c *spacetraders.Client, words []string, validators []string) error
 			ck = spacetraders.FLIGHTS
 		case "cargo":
 			ck = spacetraders.CARGO
+		case "window":
+			validOpts = []string{"all", "msgs", "sidebar", "logs"}
+			ft = filterPrefix
 		case "":
 			continue
 		default:
 			log.Printf("Ignoring unknown validator %q", v)
 			continue
 		}
-		match, err := valid(c, ck, words[i])
+		if len(validOpts) == 0 {
+		  validOpts = cache.Restore(ck)
+		}
+		match, err := valid(validOpts, words[i], ft)
 		if err != nil {
 			msgs = append(msgs, fmt.Sprintf("Invalid %s %q: %v", v, words[i], err))
 			continue
@@ -277,6 +284,7 @@ func init() {
 		{
 			Name:    "Toggle",
 			Usage:   "Toggle [window]",
+			Validators: []string{"window"},
 			Help:    "Open or close one of the UI's windows. Values are msgs/sidebar/logs/all",
 			Do:      doToggle,
 			MaxArgs: 1,
