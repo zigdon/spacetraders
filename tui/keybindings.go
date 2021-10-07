@@ -9,11 +9,12 @@ import (
 )
 
 func (t *TUI) keybindings() error {
+	t.initLog("Creating keybindings...")
 	type binding struct {
 		view string
-		key gocui.Key
-		mod gocui.Modifier
-		f func(g *gocui.Gui, v *gocui.View) error
+		key  gocui.Key
+		mod  gocui.Modifier
+		f    func(g *gocui.Gui, v *gocui.View) error
 	}
 	for _, b := range []binding{
 		{"", gocui.KeyCtrlC, gocui.ModNone, quit},
@@ -32,12 +33,12 @@ func (t *TUI) keybindings() error {
 }
 
 func backspace(g *gocui.Gui, v *gocui.View) error {
-  x, _ := v.Cursor()
-  if x <= len(prompt) {
+	x, _ := v.Cursor()
+	if x <= len(prompt) {
+		return nil
+	}
+	v.EditDelete(true)
 	return nil
-  }
-  v.EditDelete(true)
-  return nil
 }
 
 func quit(g *gocui.Gui, v *gocui.View) error {

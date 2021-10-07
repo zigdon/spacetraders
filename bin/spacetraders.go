@@ -127,6 +127,10 @@ func createViewTasks() {
 		return strings.Join(msg, "\n")
 	})
 
+	t.SetView("msgs", func() string {
+		return strings.Join(t.GetMsgs(), "\n")
+	})
+
 	tq.Add("updateShips", "", time.Now(), time.Minute, func(c *spacetraders.Client) error {
 		_, err := c.MyShips()
 		if err != nil {
@@ -183,6 +187,10 @@ func main() {
 
 	t := tui.GetUI()
 	defer t.Close()
+
+	for _, l := range t.GetInitLogs() {
+		log.Printf("init: %s", l)
+	}
 
 	cli.SetTUI(t)
 	runUI()

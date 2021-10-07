@@ -208,6 +208,7 @@ func doProcessRoutes(c *spacetraders.Client, args []string) error {
 }
 
 func (r *route) Log(format string, args ...interface{}) {
+	ui.Msg(format, args...)
 	r.LogEntries = append(r.LogEntries, fmt.Sprintf(format, args...))
 	if len(r.LogEntries) > 50 {
 		purge := len(r.LogEntries) - 50

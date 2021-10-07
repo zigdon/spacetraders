@@ -41,6 +41,8 @@ var (
 
 type UI interface {
 	PrintMsg(buf string, prefix string, format string, args ...interface{})
+	Msg(format string, args ...interface{})
+	Toggle(name string) error
 }
 
 func SetTUI(t UI) {
@@ -272,6 +274,13 @@ func init() {
 			Do:      doLoad,
 			MaxArgs: 1,
 		},
+		{
+			Name:    "Toggle",
+			Usage:   "Toggle [window]",
+			Help:    "Open or close one of the UI's windows. Values are msgs/sidebar/logs/all",
+			Do:      doToggle,
+			MaxArgs: 1,
+		},
 	} {
 		if err := Register(c); err != nil {
 			log.Fatalf("Can't register %q: %v", c.Name, err)
@@ -311,6 +320,13 @@ func doLoad(c *spacetraders.Client, args []string) error {
 
 	Out("Loading from %q...", path)
 	return Load(path)
+}
+
+func doToggle(c *spacetraders.Client, args []string) error {
+  if len(args) == 0 {
+	args = []string{"all"}
+  }
+  return ui.Toggle(args[0])
 }
 
 func doHelp(c *spacetraders.Client, args []string) error {
