@@ -142,16 +142,17 @@ func ParseLine(c *spacetraders.Client, line string) (*cmd, []string, error) {
 		skipCache = true
 		args = args[1:]
 	}
-	if len(args) < cmd.MinArgs || (cmd.MaxArgs != -1 && len(args) > cmd.MaxArgs) {
-		ErrMsg("Invalid arguments for %q", cmd.Name)
-		args = []string{cmd.Name}
-		cmd = commands["help"]
-	}
 
 	if !skipCache {
 		if err := validate(c, args, cmd.Validators); err != nil {
 			return nil, nil, fmt.Errorf("Invalid arguments: %v", err)
 		}
+	}
+
+	if len(args) < cmd.MinArgs || (cmd.MaxArgs != -1 && len(args) > cmd.MaxArgs) {
+		ErrMsg("Invalid arguments for %q", cmd.Name)
+		args = []string{cmd.Name}
+		cmd = commands["help"]
 	}
 
 	return cmd, args, nil
@@ -199,19 +200,10 @@ func valid(validOpts []string, bit string, ft filterType) (string, error) {
 	}
 }
 
-func validate(c *spacetraders.Client, words []string, validators []string) error {
-	if !*useCache || len(words) == 0 {
-		return nil
-	}
-	msgs := []string{}
-	for i, v := range validators {
-		if len(words) < i-1 {
-			return nil
-		}
+var NoCache error = errors.New("Not cached")
+func getCacheKey(name string) (spacetraders.CacheKey, error) {
 		var ck spacetraders.CacheKey
-		var ft filterType = filterContains
-		validOpts := []string{}
-		switch v {
+		switch name {
 		case "mylocation":
 			ck = spacetraders.MYLOCATIONS
 		case "location":
@@ -224,14 +216,40 @@ func validate(c *spacetraders.Client, words []string, validators []string) error
 			ck = spacetraders.FLIGHTS
 		case "cargo":
 			ck = spacetraders.CARGO
-		case "window":
+		case "loans":
+			ck = spacetraders.LOANS
+		case "":
+			return "", NoCache
+		default:
+			return "", fmt.Errorf("unknown validator %q", name)
+		}
+		return ck, nil
+}
+
+func validate(c *spacetraders.Client, words []string, validators []string) error {
+	if !*useCache || len(words) == 0 {
+		return nil
+	}
+	msgs := []string{}
+	for i, v := range validators {
+		if len(words) < i-1 {
+			return nil
+		}
+		var ck spacetraders.CacheKey
+		var ft filterType = filterContains
+		validOpts := []string{}
+		if v == "window" {
 			validOpts = []string{"all", "msgs", "sidebar", "logs"}
 			ft = filterPrefix
-		case "":
-			continue
-		default:
-			log.Printf("Ignoring unknown validator %q", v)
-			continue
+		} else {
+		  var err error
+		  ck, err = getCacheKey(v)
+		  if err != nil {
+			if err == NoCache {
+			  continue
+			}
+			return err
+		  }
 		}
 		if len(validOpts) == 0 {
 		  validOpts = cache.Restore(ck)
@@ -289,6 +307,14 @@ func init() {
 			Do:      doToggle,
 			MaxArgs: 1,
 		},
+		{
+			Name: "GetCache",
+			Usage: "GetCache [key]",
+			Help: "Examine the cache for a given key",
+			Do: doGetCache,
+			MinArgs: 1,
+			MaxArgs: 1,
+		},
 	} {
 		if err := Register(c); err != nil {
 			log.Fatalf("Can't register %q: %v", c.Name, err)
@@ -328,6 +354,16 @@ func doLoad(c *spacetraders.Client, args []string) error {
 
 	Out("Loading from %q...", path)
 	return Load(path)
+}
+
+func doGetCache(c *spacetraders.Client, args []string) error {
+  key, err := getCacheKey(args[0])
+  if err != nil {
+	return fmt.Errorf("error getting cache key %q: %v", args[0], err)
+  }
+  ca := cache.Restore(key)
+  Out("Values for %q: %v", args[0], ca)
+  return nil
 }
 
 func doToggle(c *spacetraders.Client, args []string) error {

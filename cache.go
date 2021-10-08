@@ -119,6 +119,7 @@ func (c *Cache) Extend(key CacheKey, data []string, shorts []string) {
 // Replace a key with new longs and shorts
 func (c *Cache) Store(key CacheKey, data []string, shorts []string) {
 	sort.Strings(data)
+	sort.Strings(shorts)
 	c.data[key] = &CacheItem{expiresOn: time.Now().Add(time.Hour), data: data, shorts: shorts}
 }
 

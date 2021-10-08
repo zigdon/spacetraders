@@ -45,23 +45,23 @@ func decodeJSON(data string, obj interface{}) error {
 func New() *Client {
 	ca := GetCache()
 	c := &Client{
-		server: "https://api.spacetraders.io",
-		cache: ca,
+		server:      "https://api.spacetraders.io",
+		cache:       ca,
 		flightDests: make(map[string]string),
 	}
 	for _, k := range []CacheKey{LOCATIONS, SYSTEMS} {
-		ca.RegisterUpdate(k, func () error {
-		  _, err := c.ListSystems()
-		  return err
+		ca.RegisterUpdate(k, func() error {
+			_, err := c.ListSystems()
+			return err
 		})
 	}
 	for _, k := range []CacheKey{MYLOCATIONS, FLIGHTS, FLIGHTDESTS} {
-		ca.RegisterUpdate(k, func () error {
-		  _, err := c.MyShips()
-		  return err
+		ca.RegisterUpdate(k, func() error {
+			_, err := c.MyShips()
+			return err
 		})
 	}
-	ca.RegisterUpdate(CARGO, func() error{ return nil })
+	ca.RegisterUpdate(CARGO, func() error { return nil })
 
 	return c
 }
@@ -357,8 +357,9 @@ func (c *Client) MyLoans() ([]Loan, error) {
 	shorts := []string{}
 	for i, l := range mlr.Loans {
 		ids = append(ids, l.ID)
-		mlr.Loans[i].ShortID = makeShort(LOANS, l.ID)
-		shorts = append(shorts, l.ID)
+		sid := makeShort(LOANS, l.ID)
+		mlr.Loans[i].ShortID = sid
+		shorts = append(shorts, sid)
 	}
 	c.cache.Store(LOANS, ids, shorts)
 
@@ -368,6 +369,7 @@ func (c *Client) MyLoans() ([]Loan, error) {
 // ##ENDPOINT Pay off a loan - `/my/loans/LOANID`
 func (c *Client) PayLoan(loanID string) error {
 	plr := &PayLoanRes{}
+	loanID = makeLong(loanID)
 
 	if err := c.useAPI(post, fmt.Sprintf("/my/loans/%s", loanID), nil, plr); err != nil {
 		return err
@@ -463,13 +465,15 @@ func (c *Client) MyShips() ([]Ship, error) {
 	var so []interface{}
 	for i, s := range msr.Ships {
 		ids = append(ids, s.ID)
-		msr.Ships[i].ShortID = makeShort(SHIPS, s.ID)
+		sid := makeShort(SHIPS, s.ID)
+		msr.Ships[i].ShortID = sid
+		shorts = append(shorts, sid)
+
 		if s.FlightPlanID != "" {
 			msr.Ships[i].ShortFlightPlanID = makeShort(FLIGHTS, s.FlightPlanID)
 			msr.Ships[i].FlightPlanDest = c.getFlightDest(s.FlightPlanID)
 			flights = append(flights, s.FlightPlanID)
 		}
-		shorts = append(shorts, s.ShortID)
 		locs = append(locs, s.LocationName)
 		so = append(so, &msr.Ships[i])
 	}

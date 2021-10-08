@@ -35,11 +35,14 @@ func init() {
 			Do:      doMyLoans,
 		},
 		{
-			Section: "Loans",
-			Name:    "PayLoan",
-			Usage:   "PayLoan <loanID>",
-			Help:    "Pay an outstanding loan",
-			Do:      doPayLoan,
+			Section:    "Loans",
+			Name:       "PayLoan",
+			Usage:      "PayLoan <loanID>",
+			Validators: []string{"loans"},
+			Help:       "Pay an outstanding loan",
+			Do:         doPayLoan,
+			MinArgs: 1,
+			MaxArgs: 1,
 		},
 	} {
 		if err := Register(c); err != nil {
@@ -88,6 +91,9 @@ func doMyLoans(c *spacetraders.Client, args []string) error {
 }
 
 func doPayLoan(c *spacetraders.Client, args []string) error {
+    if len(args) == 0 {
+	  return fmt.Errorf("missing args for loan")
+	}
 	err := c.PayLoan(args[0])
 	if err != nil {
 		return fmt.Errorf("error paying loan off: %v", err)
