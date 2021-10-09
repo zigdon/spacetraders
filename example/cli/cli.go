@@ -37,6 +37,14 @@ func (s *stdoutUI) PrintMsg(_ string, prefix string, format string, args ...inte
 	}
 }
 
+func (s *stdoutUI) Msg(string, ...interface{}) {
+	log.Fatal("Not implemented")
+}
+
+func (s *stdoutUI) Toggle(string) error {
+	return fmt.Errorf("Not implemented")
+}
+
 // Main input loop
 func loop(c *spacetraders.Client) {
 	config := &readline.Config{Prompt: "> "}

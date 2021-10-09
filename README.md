@@ -11,8 +11,12 @@ $ go run example/cli/cli.go
 - Available commands:
   <arguments> are required, [options] are optional.
   
+      GetCache: GetCache [key]
       Help: Help [command]
+      Load: Load [filename]
       Quit (Exit): Quit
+      Save: Save [filename]
+      Toggle: Toggle [window]
   
     Account:
       Account: Account
@@ -49,21 +53,20 @@ $ go run example/cli/cli.go
     Automation:
       AddShipToRoute: AddShipToRoute <route name> <ship id>
       CreateTradeRoute (NewTrade, NewRoute): CreateTradeRoute <name> <location, cargo>...
-      ProcessRoutes: ProcessRoutes
       ShowTradeRoute (ShowRoute): ShowTradeRoute [name]
   
 > help claim
 - Claim: Claim <username> <path/to/file>
   Claims a username, saves token to specified file
-> claim test8894 /tmp/test.readme
+> claim test20739 /tmp/test.readme
 
 - 
 > account
-- test8894: Credits: 0, Ships: 0, Structures: 0, Joined: 2021/10/05 - 0 days ago
+- test20739: Credits: 0, Ships: 0, Structures: 0, Joined: 2021/10/09 - 0 days ago
 > availableloans
 - amt: 200000, needs collateral: false, rate: 40, term (days): 2, type: STARTUP
 > takeloan STARTUP
-- Loan taken, ln-1 (ckueb3en9145506015s6zb1mvkp6), due: 2021-10-07 09:38:33.188 -0700 PDT (in 47h59m59s)
+- Loan taken, ln-1 (ckuk0v1pl32117415s6elv1zqra), due: 2021-10-11 09:38:44.071 -0700 PDT (in 47h59m59s)
 > listships OE MK-I
 - JW-MK-I: Jackshaw MK-I
   speed: 1, cargo: 50, weapons: 5, plating: 5
@@ -81,10 +84,10 @@ $ go run example/cli/cli.go
   speed: 2, cargo: 3000, weapons: 5, plating: 10
     OE-UC-AD: 473600
 > buyship OE-PM-TR JW-MK-I
-- New ship ID: s-1 (ckueb3f70145514815s6w79qld7x)
+- New ship ID: s-1 (ckuk0v26z32126215s628np1hzo)
 > myships
 - s-1: Jackshaw MK-I (JW-MK-I)
-  ID: ckueb3f70145514815s6w79qld7x
+  ID: ckuk0v26z32126215s628np1hzo
   Speed: 1, Max cargo: 50, Available space: 50, Weapons: 5, Plating: 5
   At OE-PM-TR (14, 18)
 > buy s-1 FUEL 20
@@ -93,7 +96,7 @@ $ go run example/cli/cli.go
 - s-1 bought 25 of METALS for 100
 > myships s-1
 - s-1: Jackshaw MK-I (JW-MK-I)
-  ID: ckueb3f70145514815s6w79qld7x
+  ID: ckuk0v26z32126215s628np1hzo
   Speed: 1, Max cargo: 50, Available space: 5, Weapons: 5, Plating: 5
   At OE-PM-TR (14, 18)
   Cargo:
@@ -142,13 +145,13 @@ $ go run example/cli/cli.go
 - Created flight plan: f-1: s-1 OE-PM-TR->OE-PM, ETA: 35s
 > showflightplan f-1
 - f-1: s-1 OE-PM-TR->OE-PM
-    ID: ckueb3iyl145541315s6qdb1zegg
-    ShipID: ckueb3f70145514815s6w79qld7x
-    Arrives at: 2021-10-05 09:39:14.78 -0700 PDT, ETA: 35s
+    ID: ckuk0v6cd32152515s65j4dykfe
+    ShipID: ckuk0v26z32126215s628np1hzo
+    Arrives at: 2021-10-09 09:39:26.075 -0700 PDT, ETA: 34s
     Fuel consumed: 1, remaining: 19
     Distance: 2
 > wait f-1
-- Waiting 34s for f-1 (ckueb3iyl145541315s6qdb1zegg) to arrive...
+- Waiting 34s for f-1 (ckuk0v6cd32152515s65j4dykfe) to arrive...
   ... f-1 arrived!
 > sell s-1 METALS 25
 - s-1 sold 25 of METALS for 975

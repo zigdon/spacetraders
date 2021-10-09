@@ -16,6 +16,7 @@ import (
 var useDebug = flag.Bool("debug", false, "Print out all debug statements")
 
 type Client struct {
+	httpClient  *http.Client
 	username    string
 	token       string
 	server      string
@@ -45,6 +46,7 @@ func decodeJSON(data string, obj interface{}) error {
 func New() *Client {
 	ca := GetCache()
 	c := &Client{
+		httpClient: &http.Client{},
 		server:      "https://api.spacetraders.io",
 		cache:       ca,
 		flightDests: make(map[string]string),
@@ -129,6 +131,7 @@ type httpMethod string
 
 const (
 	post httpMethod = "POST"
+	put httpMethod = "PUT"
 	get  httpMethod = "GET"
 )
 
@@ -139,6 +142,8 @@ func (c *Client) useAPI(method httpMethod, url string, args map[string]string, o
 		f = c.Post
 	} else if method == get {
 		f = c.Get
+	} else if method == put {
+		f = c.Put
 	} else {
 		return fmt.Errorf("Unknown method %q", method)
 	}
@@ -188,7 +193,15 @@ func backoff(f func() (*http.Response, error)) (*http.Response, error) {
 	}
 }
 
+func (c *Client) Put(base string, args map[string]string) (string, error) {
+  return c.DoPost("PUT", base, args)
+}
+
 func (c *Client) Post(base string, args map[string]string) (string, error) {
+  return c.DoPost("POST", base, args)
+}
+
+func (c *Client) DoPost(method, base string, args map[string]string) (string, error) {
 	var uri string
 	if args == nil {
 		args = make(map[string]string)
@@ -207,21 +220,27 @@ func (c *Client) Post(base string, args map[string]string) (string, error) {
 	}
 	body := bytes.NewBuffer(jsonBody)
 
+	req, err := http.NewRequest(method, uri, body)
+	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
+	if err != nil {
+	  return "", err
+	}
+
 	resp, err := backoff(func() (*http.Response, error) {
-		return http.Post(uri, "application/json", body)
+		return c.httpClient.Do(req)
 	})
 
+	defer resp.Body.Close()
+	resBody, _ := ioutil.ReadAll(resp.Body)
 	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
-		defer resp.Body.Close()
-		resBody, _ := ioutil.ReadAll(resp.Body)
 		return string(resBody), nil
 	}
 
 	if resp != nil {
-		return "", fmt.Errorf("error in POST %q (rc=%d %q): %v", base, resp.StatusCode, resp.Status, err)
+		return "", fmt.Errorf("error in POST %q (rc=%d %q): %v\n%s", base, resp.StatusCode, resp.Status, err, resBody)
 	}
 
-	return "", fmt.Errorf("error in POST %q: (nil response) %v", base, err)
+	return "", fmt.Errorf("error in POST %q: (nil response) %v\n%s", base, err, resBody)
 }
 
 func (c *Client) Get(base string, args map[string]string) (string, error) {
@@ -371,7 +390,7 @@ func (c *Client) PayLoan(loanID string) error {
 	plr := &PayLoanRes{}
 	loanID = makeLong(loanID)
 
-	if err := c.useAPI(post, fmt.Sprintf("/my/loans/%s", loanID), nil, plr); err != nil {
+	if err := c.useAPI(put, fmt.Sprintf("/my/loans/%s", loanID), nil, plr); err != nil {
 		return err
 	}
 

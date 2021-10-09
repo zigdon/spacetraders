@@ -38,7 +38,7 @@ func init() {
 			Section:    "Automation",
 			Name:       "AddShipToRoute",
 			Usage:      "AddShipToRoute <route name> <ship id>",
-			Validators: []string{"", "ships"},
+			Validators: []string{"", "ship"},
 			Help:       "Add a new ship to an existing trade route.",
 			Do:         doAddShipToRoute,
 			MinArgs:    2,
