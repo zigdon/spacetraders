@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/jroimartin/gocui"
+	"github.com/awesome-gocui/gocui"
 )
 
 var prompt = "> "
@@ -54,7 +54,7 @@ func GetUI() *TUI {
 }
 
 func init() {
-	g, err := gocui.NewGui(gocui.OutputNormal)
+	g, err := gocui.NewGui(gocui.OutputNormal, false)
 	if err != nil {
 		log.Fatalf("can't create gui: %v", err)
 	}
@@ -142,17 +142,17 @@ func (t *TUI) UpdateView(name string) string {
 
 func (t *TUI) Toggle(name string) error {
 	if name == "all" {
-	  open := true
-	  for _, s := range t.windows {
-		open = open && s
-	  }
-	  for w := range t.windows {
-		t.windows[w] = !open
-	  }
-	  return nil
+		open := true
+		for _, s := range t.windows {
+			open = open && s
+		}
+		for w := range t.windows {
+			t.windows[w] = !open
+		}
+		return nil
 	}
 	if _, ok := t.windows[name]; !ok {
-	  return fmt.Errorf("unknown window %q", name)
+		return fmt.Errorf("unknown window %q", name)
 	}
 	t.windows[name] = !t.windows[name]
 	return nil

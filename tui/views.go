@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/jroimartin/gocui"
+	"github.com/awesome-gocui/gocui"
 )
 
 func createView(g *gocui.Gui, name string, x0, y0, x1, y1 int,
 	fNew func(*gocui.View) error,
 	fUpdate func(*gocui.View) error) error {
-	if v, err := t.g.SetView(name, x0, y0, x1, y1); err != nil {
+	if v, err := t.g.SetView(name, x0, y0, x1, y1, 0); err != nil {
 		if err != gocui.ErrUnknownView {
 			return err
 		}
