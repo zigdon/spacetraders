@@ -10,7 +10,7 @@ import (
 func createView(g *gocui.Gui, name string, x0, y0, x1, y1 int,
 	fNew func(*gocui.View) error,
 	fUpdate func(*gocui.View) error) error {
-	if v, err := t.g.SetView(name, x0, y0, x1, y1, 0); err != nil {
+	if v, err := g.SetView(name, x0, y0, x1, y1, 0); err != nil {
 		if err != gocui.ErrUnknownView {
 			return err
 		}
@@ -24,11 +24,8 @@ func createView(g *gocui.Gui, name string, x0, y0, x1, y1 int,
 	} else {
 		msg := t.UpdateView(name)
 		if msg != "" {
-			g.Update(func(*gocui.Gui) error {
-				v.Clear()
-				fmt.Fprint(v, msg)
-				return nil
-			})
+			v.Clear()
+			fmt.Fprint(v, msg)
 		}
 	}
 	return nil
