@@ -16,7 +16,7 @@ const (
 
 type layoutItem struct {
 	ratio   int
-	min     int
+	fixed     int
 	item    interface{}
 	fNew    func(*gocui.View) error
 	fUpdate func(*gocui.View) error
@@ -52,17 +52,20 @@ func (l *layoutLevel) layout(g *gocui.Gui, x0, y0, x1, y1 int) error {
 		acc = y0
 	}
 
-	// Add up all the minimum sizes, as they're not available for assignment
-	min := 0
+	// Add up all the fixed sizes, as they're not available for assignment
+	fixed := 0
 	segments := 0
 	for _, item := range l.items {
-		min += item.min
-		segments += item.ratio
+		if item.fixed > 0 {
+		  fixed += item.fixed
+		} else {
+		  segments += item.ratio
+		}
 	}
-	if length < min {
-		return fmt.Errorf("window too small for minimum sizes: %d < %d", length, min)
+	if length < fixed {
+		return fmt.Errorf("window too small for fixed sizes: %d < %d", length, fixed)
 	}
-	length -= min
+	length -= fixed
 
 	// The rest of the space gets split between the segments
 	unit := length / segments
@@ -71,8 +74,13 @@ func (l *layoutLevel) layout(g *gocui.Gui, x0, y0, x1, y1 int) error {
 
 	for idx, item := range l.items {
 		var err error
+		var assignment int
 		name, layout := item.get()
-		assignment := unit * item.ratio
+		if item.fixed == 0 {
+		  assignment = unit * item.ratio
+		} else {
+		  assignment = item.fixed
+		}
 
 		// The last item gets the leftovers
 		if idx == len(l.items) {
@@ -121,17 +129,17 @@ type ratioLayout struct {
 	  +-------------------------------+
 	  | v1                            |
 	  +-------------------------------+
-	  | v2            |  v3           |
-	  |               +---------------+
-	  |               |  v4           |
-	  |               +---------------+
-	  |               |  v5           |
+	  | v2     |  v3                  |
+	  |        +----------------------+
+	  |        |  v4                  |
+	  |        +----------------------+
+	  |        |  v5                  |
 	  +-------------------------------+
 
   { VERTICAL [
 	1, "v1"
 	3, { HORIZONTAL [
-	  1, "v2"
+	  1, "v2", 5
 	  1, { VERTICAL [
 		1, "v3"
 		1, "v4"

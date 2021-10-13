@@ -135,6 +135,32 @@ func TestLayout(t *testing.T) {
 				"test23": {40, 16, 79, 24},
 			},
 		},
+		{
+			desc: "fixed",
+			layout: &layoutLevel{
+				direction: layoutHorizontal,
+				items: []*layoutItem{
+					{
+						ratio: 1,
+						item:  "test1",
+						fixed: 10,
+					},
+					{
+						ratio: 1,
+						item:  "test2",
+					},
+					{
+						ratio: 4,
+						item:  "test3",
+					},
+				},
+			},
+			want: map[string]size{
+				"test1": {0, 0, 9, 24},
+				"test2": {10, 0, 23, 24},
+				"test3": {24, 0, 79, 24},
+			},
+		},
 	}
 
 	for _, tc := range tests {
