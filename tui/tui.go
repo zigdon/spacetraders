@@ -70,7 +70,54 @@ func init() {
 		},
 		initLogs: []string{},
 	}
-	t.g.SetManagerFunc(t.mainView)
+	// t.g.SetManagerFunc(t.mainView)
+	t.g.SetManager(&ratioLayout{
+	  &layoutLevel{
+		direction: layoutVertical,
+		items: []*layoutItem{
+		  {
+			fixed: 3,
+			item: "account",
+		  },
+		  {
+			ratio: 1,
+			item: &layoutLevel{
+			  direction: layoutHorizontal,
+			  items: []*layoutItem{
+				{
+				  ratio: 3,
+				  item: "main",
+				  fNew: mainNew,
+				},
+				{
+				  ratio: 1,
+				  item: &layoutLevel{
+					direction: layoutVertical,
+					items: []*layoutItem{
+					  {
+						ratio: 1,
+						item: "sidebar",
+						fUpdate: sidebarUpdate,
+					  },
+					  {
+						ratio: 1,
+						item: "msgs",
+						fNew: msgsNew,
+					  },
+					},
+				  },
+				},
+			  },
+			},
+		  },
+		  {
+			fixed: 3,
+			item: "input",
+			fNew: inputNew,
+		  },
+		},
+	  },
+	})
 	t.g.Cursor = true
 
 	if err := t.keybindings(); err != nil {
