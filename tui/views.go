@@ -7,28 +7,56 @@ import (
 	"github.com/awesome-gocui/gocui"
 )
 
-func createView(g *gocui.Gui, name string, x0, y0, x1, y1 int,
-	fNew func(*gocui.View) error,
-	fUpdate func(*gocui.View) error) error {
-	if v, err := g.SetView(name, x0, y0, x1, y1, 0); err != nil {
-		if err != gocui.ErrUnknownView {
-			return err
-		}
-		v.Frame = true
-		v.Autoscroll = false
-		if fNew != nil {
-			return fNew(v)
-		}
-	} else if fUpdate != nil {
-		return fUpdate(v)
-	} else {
-		msg := t.UpdateView(name)
-		if msg != "" {
-			v.Clear()
-			fmt.Fprint(v, msg)
-		}
-	}
-	return nil
+var sideBars = &layoutLevel{
+	direction: layoutVertical,
+	items: []*layoutItem{
+		{
+			ratio:   1,
+			name:    "sidebar",
+			fUpdate: sidebarUpdate,
+		},
+		{
+			ratio: 1,
+			name:  "msgs",
+			fNew:  msgsNew,
+		},
+	},
+}
+
+var content = &layoutLevel{
+	direction: layoutHorizontal,
+	items: []*layoutItem{
+		{
+			ratio: 3,
+			name:  "main",
+			fNew:  mainNew,
+		},
+		{
+			ratio: 1,
+			inner: sideBars,
+		},
+	},
+}
+
+var mainLayout = &ratioLayout{
+	&layoutLevel{
+		direction: layoutVertical,
+		items: []*layoutItem{
+			{
+				fixed: 3,
+				name:  "account",
+			},
+			{
+				ratio: 1,
+				inner: content,
+			},
+			{
+				fixed: 3,
+				name:  "input",
+				fNew:  inputNew,
+			},
+		},
+	},
 }
 
 func mainNew(v *gocui.View) error {

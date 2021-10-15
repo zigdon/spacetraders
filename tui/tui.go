@@ -71,53 +71,7 @@ func init() {
 		initLogs: []string{},
 	}
 	// t.g.SetManagerFunc(t.mainView)
-	t.g.SetManager(&ratioLayout{
-	  &layoutLevel{
-		direction: layoutVertical,
-		items: []*layoutItem{
-		  {
-			fixed: 3,
-			name: "account",
-		  },
-		  {
-			ratio: 1,
-			inner: &layoutLevel{
-			  direction: layoutHorizontal,
-			  items: []*layoutItem{
-				{
-				  ratio: 3,
-				  name: "main",
-				  fNew: mainNew,
-				},
-				{
-				  ratio: 1,
-				  inner: &layoutLevel{
-					direction: layoutVertical,
-					items: []*layoutItem{
-					  {
-						ratio: 1,
-						name: "sidebar",
-						fUpdate: sidebarUpdate,
-					  },
-					  {
-						ratio: 1,
-						name: "msgs",
-						fNew: msgsNew,
-					  },
-					},
-				  },
-				},
-			  },
-			},
-		  },
-		  {
-			fixed: 3,
-			name: "input",
-			fNew: inputNew,
-		  },
-		},
-	  },
-	})
+	t.g.SetManager(mainLayout)
 	t.g.Cursor = true
 
 	if err := t.keybindings(); err != nil {
