@@ -77,31 +77,31 @@ func init() {
 		items: []*layoutItem{
 		  {
 			fixed: 3,
-			item: "account",
+			name: "account",
 		  },
 		  {
 			ratio: 1,
-			item: &layoutLevel{
+			inner: &layoutLevel{
 			  direction: layoutHorizontal,
 			  items: []*layoutItem{
 				{
 				  ratio: 3,
-				  item: "main",
+				  name: "main",
 				  fNew: mainNew,
 				},
 				{
 				  ratio: 1,
-				  item: &layoutLevel{
+				  inner: &layoutLevel{
 					direction: layoutVertical,
 					items: []*layoutItem{
 					  {
 						ratio: 1,
-						item: "sidebar",
+						name: "sidebar",
 						fUpdate: sidebarUpdate,
 					  },
 					  {
 						ratio: 1,
-						item: "msgs",
+						name: "msgs",
 						fNew: msgsNew,
 					  },
 					},
@@ -112,7 +112,7 @@ func init() {
 		  },
 		  {
 			fixed: 3,
-			item: "input",
+			name: "input",
 			fNew: inputNew,
 		  },
 		},

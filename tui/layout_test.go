@@ -31,7 +31,7 @@ func TestLayout(t *testing.T) {
 				items: []*layoutItem{
 					{
 						ratio: 1,
-						item:  "test",
+						name:  "test",
 					},
 				},
 			},
@@ -46,15 +46,15 @@ func TestLayout(t *testing.T) {
 				items: []*layoutItem{
 					{
 						ratio: 1,
-						item:  "test",
+						name:  "test",
 					},
 					{
 						ratio: 1,
-						item:  "test2",
+						name:  "test2",
 					},
 					{
 						ratio: 1,
-						item:  "test3",
+						name:  "test3",
 					},
 				},
 			},
@@ -71,11 +71,11 @@ func TestLayout(t *testing.T) {
 				items: []*layoutItem{
 					{
 						ratio: 2,
-						item:  "test",
+						name:  "test",
 					},
 					{
 						ratio: 1,
-						item:  "test2",
+						name:  "test2",
 					},
 				},
 			},
@@ -91,36 +91,36 @@ func TestLayout(t *testing.T) {
 				items: []*layoutItem{
 					{
 						ratio: 1,
-						item: &layoutLevel{
+						inner: &layoutLevel{
 							direction: layoutVertical,
 							items: []*layoutItem{
 								{
 									ratio: 1,
-									item:  "test11",
+									name:  "test11",
 								},
 								{
 									ratio: 1,
-									item:  "test12",
+									name:  "test12",
 								},
 							},
 						},
 					},
 					{
 						ratio: 1,
-						item: &layoutLevel{
+						inner: &layoutLevel{
 							direction: layoutVertical,
 							items: []*layoutItem{
 								{
 									ratio: 1,
-									item:  "test21",
+									name:  "test21",
 								},
 								{
 									ratio: 1,
-									item:  "test22",
+									name:  "test22",
 								},
 								{
 									ratio: 1,
-									item:  "test23",
+									name:  "test23",
 								},
 							},
 						},
@@ -142,16 +142,16 @@ func TestLayout(t *testing.T) {
 				items: []*layoutItem{
 					{
 						ratio: 1,
-						item:  "test1",
+						name:  "test1",
 						fixed: 10,
 					},
 					{
 						ratio: 1,
-						item:  "test2",
+						name:  "test2",
 					},
 					{
 						ratio: 4,
-						item:  "test3",
+						name:  "test3",
 					},
 				},
 			},
@@ -163,19 +163,17 @@ func TestLayout(t *testing.T) {
 		},
 	}
 
+	g, err := gocui.NewGui(gocui.OutputSimulator, true)
+	if err != nil {
+		t.Fatalf("Can't create gui: %v", err)
+	}
+	testingScreen := g.GetTestingScreen()
+	cleanup := testingScreen.StartGui()
+	defer cleanup()
 	for _, tc := range tests {
 		t.Run(tc.desc, func(t *testing.T) {
-			g, err := gocui.NewGui(gocui.OutputSimulator, true)
-			if err != nil {
-				t.Fatalf("Can't create gui: %v", err)
-			}
-
 			mgr := &ratioLayout{definition: tc.layout}
 			g.SetManager(mgr)
-
-			testingScreen := g.GetTestingScreen()
-			cleanup := testingScreen.StartGui()
-			defer cleanup()
 
 			<-time.After(50 * time.Millisecond)
 			found := make(map[string]bool)
@@ -200,7 +198,6 @@ func TestLayout(t *testing.T) {
 					t.Errorf("Expected view %q not found, views: %v", w, g.Views())
 				}
 			}
-
 		})
 	}
 }

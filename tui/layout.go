@@ -2,7 +2,6 @@ package tui
 
 import (
 	"fmt"
-	"log"
 
 	"github.com/awesome-gocui/gocui"
 )
@@ -16,22 +15,11 @@ const (
 
 type layoutItem struct {
 	ratio   int
-	fixed     int
-	item    interface{}
+	fixed   int
+	name    string
+	inner   *layoutLevel
 	fNew    func(*gocui.View) error
 	fUpdate func(*gocui.View) error
-}
-
-func (l *layoutItem) get() (string, *layoutLevel) {
-	switch l.item.(type) {
-	case string:
-		return l.item.(string), nil
-	case *layoutLevel:
-		return "", l.item.(*layoutLevel)
-	default:
-		log.Fatalf("Bad item in layout (%T): %+v", l.item, l.item)
-	}
-	return "", nil
 }
 
 type layoutLevel struct {
@@ -40,7 +28,6 @@ type layoutLevel struct {
 }
 
 func (l *layoutLevel) layout(g *gocui.Gui, x0, y0, x1, y1 int) error {
-	log.Printf("layout: (%d,%d)-(%d,%d)", x0, y0, x1, y1)
 	var length, acc int
 
 	// Figure out which dimention we care about
@@ -70,12 +57,14 @@ func (l *layoutLevel) layout(g *gocui.Gui, x0, y0, x1, y1 int) error {
 	// The rest of the space gets split between the segments
 	unit := length / segments
 	left := length % segments
-	log.Printf("%d segments of %d, %d left over", segments, unit, left)
+
+	if unit == 0 {
+	  return fmt.Errorf("window too small for allocated units: length=%d, segments=%d", length, segments)
+	}
 
 	for idx, item := range l.items {
 		var err error
 		var assignment int
-		name, layout := item.get()
 		if item.fixed == 0 {
 		  assignment = unit * item.ratio
 		} else {
@@ -105,12 +94,10 @@ func (l *layoutLevel) layout(g *gocui.Gui, x0, y0, x1, y1 int) error {
 		}
 		acc += assignment
 
-		if layout != nil {
-			log.Printf("Creating sublayout at (%d,%d)-(%d,%d)", ix0, iy0, ix1, iy1)
-			err = layout.layout(g, ix0, iy0, ix1, iy1)
+		if item.inner != nil {
+			err = item.inner.layout(g, ix0, iy0, ix1, iy1)
 		} else {
-			log.Printf("createView(%q at (%d,%d)-(%d,%d))", name, ix0, iy0, ix1, iy1)
-			err = createView(g, name, ix0, iy0, ix1, iy1, item.fNew, item.fUpdate)
+			err = createView(g, item.name, ix0, iy0, ix1, iy1, item.fNew, item.fUpdate)
 		}
 
 		if err != nil {
