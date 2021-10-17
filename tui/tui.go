@@ -54,7 +54,7 @@ func GetUI() *TUI {
 }
 
 func init() {
-	g, err := gocui.NewGui(gocui.OutputNormal, false)
+	g, err := gocui.NewGui(gocui.OutputNormal, true)
 	if err != nil {
 		log.Fatalf("can't create gui: %v", err)
 	}

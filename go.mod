@@ -8,6 +8,7 @@ require (
 	github.com/chzyer/readline v0.0.0-20180603132655-2972be24d48e
 	github.com/chzyer/test v0.0.0-20210722231415-061457976a23 // indirect
 	github.com/gdamore/tcell/v2 v2.4.0 // indirect
+	github.com/google/go-cmp v0.5.6
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
 	github.com/mattn/go-runewidth v0.0.13 // indirect
 	golang.org/x/sys v0.0.0-20211007075335-d3039528d8ac // indirect
